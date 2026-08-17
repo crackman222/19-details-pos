@@ -28,9 +28,12 @@ export default function Struk() {
     return <div className="loading-screen">Memuat...</div>
   }
 
+  const isPaid = Boolean(treatment.payment)
+
   return (
     <div className="struk-screen">
       <div className="struk-card">
+        <div className={`struk-check ${isPaid ? '' : 'struk-check-pending'}`}>{isPaid ? '✓' : '⏳'}</div>
         <h1>Nineteen Details</h1>
         <p className="struk-meta">{formatDateTime(treatment.created_at)}</p>
         <p className="struk-meta">{treatment.treatment_code}</p>
@@ -77,12 +80,12 @@ export default function Struk() {
         </div>
         <div className="struk-row">
           <span>Pembayaran</span>
-          <span>{PAYMENT_LABELS[treatment.payment?.payment_method] || '-'}</span>
+          <span>{isPaid ? PAYMENT_LABELS[treatment.payment.payment_method] : 'Belum dibayar'}</span>
         </div>
 
         {treatment.notes && <p className="struk-notes">Catatan: {treatment.notes}</p>}
 
-        <button type="button" onClick={() => navigate('/riwayat')}>
+        <button type="button" className="btn-primary struk-done" onClick={() => navigate('/')}>
           Selesai
         </button>
       </div>

@@ -11,9 +11,31 @@
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
+
+  /* Nineteen Details POS palette */
+  --pos-font: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --pos-blue: #2c6a9e;
+  --pos-blue-dark: #1f4e73;
+  --pos-blue-light: #dce9f3;
+  --pos-blue-lighter: #f0f6fb;
+  --pos-bg: #f6f7f8;
+  --pos-surface: #ffffff;
+  --pos-border: rgba(0, 0, 0, 0.08);
+  --pos-border-soft: rgba(0, 0, 0, 0.06);
+  --pos-text: #16181c;
+  --pos-text-muted: rgba(0, 0, 0, 0.55);
+  --pos-text-faint: rgba(0, 0, 0, 0.4);
+  --pos-green-bg: #e3f3e8;
+  --pos-green-text: #276b45;
+  --pos-gray-bg: #eef0f2;
+  --pos-gray-text: #5b616b;
+  --pos-red-bg: #fbe4e4;
+  --pos-red-text: #a12f2f;
+  --pos-radius: 10px;
+  --pos-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
@@ -54,12 +76,14 @@ body {
   margin: 0;
 }
 
+/* #root previously used the Vite starter's centered 1126px landing-page column.
+   The POS app is a full-viewport terminal UI (sidebar + content), so it needs
+   the whole window instead of a centered, bordered column. */
 #root {
-  width: 1126px;
+  width: 100%;
   max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  margin: 0;
+  text-align: left;
   min-height: 100svh;
   display: flex;
   flex-direction: column;

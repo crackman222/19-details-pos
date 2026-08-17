@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getTreatmentDetail, closeTreatment, voidTreatment, completeTreatment } from '../api'
+import {
+  getTreatmentDetail,
+  closeTreatment,
+  voidTreatment,
+  completeTreatment,
+  recordPayment,
+} from '../api'
+import { PaymentMethodSelector } from '../components/PaymentMethodSelector'
 import { formatRupiah, formatDateTime } from '../lib/format'
 
 const STATUS_LABELS = {
@@ -17,6 +24,8 @@ export default function DetailTreatment() {
   const [treatment, setTreatment] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showPaymentForm, setShowPaymentForm] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('cash')
 
   const load = useCallback(() => {
     getTreatmentDetail(id)
@@ -27,6 +36,19 @@ export default function DetailTreatment() {
   useEffect(() => {
     load()
   }, [load])
+
+  async function handleRecordPayment() {
+    setBusy(true)
+    try {
+      await recordPayment(id, { amount: treatment.total, paymentMethod })
+      setShowPaymentForm(false)
+      load()
+    } catch {
+      setError('Gagal mencatat pembayaran')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function handleComplete() {
     setBusy(true)
@@ -77,72 +99,112 @@ export default function DetailTreatment() {
   }
 
   const isFinal = treatment.status === 'voided' || treatment.status === 'closed'
+  const isPaid = Boolean(treatment.payment)
 
   return (
     <div className="detail-screen">
       <h1>Detail Transaksi</h1>
-      <span className={`status-badge status-${treatment.status}`}>
-        {STATUS_LABELS[treatment.status] || treatment.status}
-      </span>
 
-      <div className="struk-row">
-        <span>Kode</span>
-        <span>{treatment.treatment_code}</span>
-      </div>
-      <div className="struk-row">
-        <span>Plat</span>
-        <span>{treatment.plate_number}</span>
-      </div>
-      <div className="struk-row">
-        <span>Kendaraan</span>
-        <span>{treatment.treatment_type || '-'}</span>
-      </div>
-      <div className="struk-row">
-        <span>Staf</span>
-        <span>{treatment.pic}</span>
-      </div>
-      <div className="struk-row">
-        <span>Tanggal</span>
-        <span>{formatDateTime(treatment.created_at)}</span>
-      </div>
-
-      <div className="struk-items">
-        {treatment.items.map((item) => (
-          <div key={item.id} className="struk-item">
-            <span>
-              {item.service_name} x{item.quantity}
-            </span>
-            <span>{formatRupiah(item.subtotal)}</span>
+      <div className="detail-card">
+        <div className="detail-card-header">
+          <div>
+            <div className="detail-card-code">{treatment.treatment_code}</div>
+            <div className="detail-card-plate">{treatment.plate_number}</div>
           </div>
-        ))}
-      </div>
+          <div className="detail-card-badges">
+            <span className={`status-badge status-${treatment.status}`}>
+              {STATUS_LABELS[treatment.status] || treatment.status}
+            </span>
+            <span className={`status-badge ${isPaid ? 'status-closed' : 'status-created'}`}>
+              {isPaid ? 'Lunas' : 'Belum Dibayar'}
+            </span>
+          </div>
+        </div>
 
-      <div className="struk-row struk-total">
-        <span>Total</span>
-        <span>{formatRupiah(treatment.total)}</span>
-      </div>
+        <div className="struk-row">
+          <span>Kendaraan</span>
+          <span>{treatment.treatment_type || '-'}</span>
+        </div>
+        <div className="struk-row">
+          <span>Staf</span>
+          <span>{treatment.pic}</span>
+        </div>
+        <div className="struk-row">
+          <span>Tanggal</span>
+          <span>{formatDateTime(treatment.created_at)}</span>
+        </div>
 
-      <div className="detail-actions">
-        <button type="button" onClick={() => navigate(`/struk/${treatment.id}`)}>
-          Lihat Struk
-        </button>
-        {!isFinal && (
-          <>
-            {treatment.status === 'paid' && (
-              <button type="button" onClick={handleComplete} disabled={busy}>
-                Tandai Selesai
+        <hr />
+        <div className="struk-items">
+          {treatment.items.map((item) => (
+            <div key={item.id} className="struk-item">
+              <span>
+                {item.service_name} x{item.quantity}
+              </span>
+              <span>{formatRupiah(item.subtotal)}</span>
+            </div>
+          ))}
+        </div>
+        <hr />
+
+        <div className="struk-row struk-total">
+          <span>Total</span>
+          <span>{formatRupiah(treatment.total)}</span>
+        </div>
+
+        {!isFinal && !isPaid && (
+          <div className="payment-form">
+            {showPaymentForm ? (
+              <>
+                <div className="payment-form-title">Catat Pembayaran</div>
+                <PaymentMethodSelector value={paymentMethod} onChange={setPaymentMethod} />
+                <div className="detail-actions">
+                  <button type="button" className="btn-secondary" onClick={() => setShowPaymentForm(false)}>
+                    Batal
+                  </button>
+                  <button type="button" className="btn-primary" onClick={handleRecordPayment} disabled={busy}>
+                    Konfirmasi · {formatRupiah(treatment.total)}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="btn-primary payment-form-trigger"
+                onClick={() => setShowPaymentForm(true)}
+              >
+                Catat Pembayaran
               </button>
             )}
-            {treatment.status === 'completed' && (
-              <button type="button" onClick={handleClose} disabled={busy}>
-                Tutup Transaksi
-              </button>
-            )}
-            <button type="button" className="danger" onClick={handleVoid} disabled={busy}>
-              Batalkan
-            </button>
-          </>
+          </div>
         )}
+
+        {treatment.status === 'completed' && !isPaid && !showPaymentForm && (
+          <p className="detail-hint">Pembayaran diperlukan sebelum transaksi bisa ditutup.</p>
+        )}
+
+        <div className="detail-actions">
+          <button type="button" className="btn-secondary" onClick={() => navigate(`/struk/${treatment.id}`)}>
+            Lihat Struk
+          </button>
+          {!isFinal && (
+            <>
+              {treatment.status !== 'completed' && (
+                <button type="button" className="btn-primary" onClick={handleComplete} disabled={busy}>
+                  Tandai Selesai
+                </button>
+              )}
+              {treatment.status === 'completed' && isPaid && (
+                <button type="button" className="btn-primary" onClick={handleClose} disabled={busy}>
+                  Tutup Transaksi
+                </button>
+              )}
+              <button type="button" className="btn-danger" onClick={handleVoid} disabled={busy}>
+                Batalkan
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

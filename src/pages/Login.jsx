@@ -35,24 +35,28 @@ export default function Login() {
 
   return (
     <div className="login-screen">
-      <h1>Nineteen Details</h1>
-      {!selected ? (
-        <>
-          <p>Pilih nama Anda</p>
-          {error && <p className="form-error">{error}</p>}
-          <NamePicker profiles={profiles} onSelect={setSelected} />
-        </>
-      ) : (
-        <PinPad
-          staffName={selected.full_name}
-          error={error}
-          onSubmit={handlePinSubmit}
-          onCancel={() => {
-            setSelected(null)
-            setError('')
-          }}
-        />
-      )}
+      <div className="login-card">
+        <div className="login-brand-mark">ND</div>
+        <h1>Nineteen Details</h1>
+        <p className="login-subtitle">Point of Sale</p>
+        {!selected ? (
+          <>
+            <p className="login-instruction">Pilih nama Anda</p>
+            {error && <p className="form-error">{error}</p>}
+            <NamePicker profiles={profiles} onSelect={setSelected} />
+          </>
+        ) : (
+          <PinPad
+            staffName={selected.full_name}
+            error={error}
+            onSubmit={handlePinSubmit}
+            onCancel={() => {
+              setSelected(null)
+              setError('')
+            }}
+          />
+        )}
+      </div>
     </div>
   )
 }

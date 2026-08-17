@@ -12,6 +12,9 @@ CREATE TABLE public.treatments (
   notes text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  subtotal numeric DEFAULT 0,
+  discount numeric DEFAULT 0 CHECK (discount >= 0::numeric),
+  total numeric DEFAULT 0,
   CONSTRAINT treatments_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.payments (
@@ -54,4 +57,15 @@ CREATE TABLE public.services (
   name text NOT NULL,
   price numeric NOT NULL,
   CONSTRAINT services_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.treatment_items (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  treatment_id bigint NOT NULL,
+  service_name text NOT NULL,
+  unit_price numeric NOT NULL,
+  quantity integer NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  subtotal numeric NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT treatment_items_pkey PRIMARY KEY (id),
+  CONSTRAINT treatment_items_treatment_id_fkey FOREIGN KEY (treatment_id) REFERENCES public.treatments(id)
 );

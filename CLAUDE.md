@@ -8,7 +8,7 @@ treatments and view digital receipts.
 
 ## What this system does
 1. Staff opens the app — sees a list of active staff names
-2. Staff taps their name and enters their 4-digit PIN
+2. Staff taps their name and enters their 6-digit PIN
 3. Staff creates a treatment — vehicle plate, services rendered, payment method
 4. App saves the treatment and displays a digital receipt
 5. Staff closes the treatment
@@ -141,7 +141,7 @@ Use this for the receipt screen and treatment history list.
 ### Flow
 1. App loads → fetch all active profiles → display as name buttons
 2. Staff taps their name
-3. Staff enters 4-digit PIN on a number pad
+3. Staff enters 6-digit PIN on a number pad
 4. App constructs the fake email: `{name_lowercase_no_spaces}@nineteendetails.internal`
 5. App calls Supabase signInWithPassword with that email and the PIN as password
 6. On success → redirect to main screen
@@ -169,12 +169,14 @@ Never use auth.uid() directly in frontend queries — always resolve to a profil
 - Never show email anywhere in the UI
 - Never expose or log the PIN
 - Never let staff change their own PIN from the app
-- PINs are 4 digits only — validate before submitting
+- PINs are 6 digits only — validate before submitting (matches Supabase
+  Auth's default 6-character minimum password length, since the PIN doubles
+  as the account password)
 
 ### Creating a new staff member (manual, via Supabase dashboard)
 1. Authentication → Users → Add user
    Email: name@nineteendetails.internal
-   Password: their 4-digit PIN
+   Password: their 6-digit PIN
 2. Copy the UUID Supabase assigns
 3. Insert into profiles: id (the UUID), full_name, role = 'staff'
 
@@ -224,14 +226,34 @@ Do not add others without confirming with the client.
 
 ## Screens to build
 
-1. **Login** — name picker grid + 4-digit PIN pad, no email/password fields
-2. **Transaksi Baru** — service multi-picker, plate number input, vehicle type,
-   payment method selector, discount input, notes, submit
-3. **Struk** — digital receipt using treatment_summary view; shows shop name,
-   date/time, plate, vehicle type, staff name, itemized services,
-   subtotal, discount, total, payment method
-4. **Riwayat Transaksi** — today's treatments list, searchable by plate number
-5. **Detail Treatment** — single treatment view with close/void actions
+1. **Login** — name picker grid + 6-digit PIN pad, no email/password fields
+2. **Antrian Hari Ini** (dashboard home, `/`) — today's treatments still open
+   (status `created`/`paid`/`completed`), read from `treatments`; a queue view,
+   not a booking/scheduling system — no bay/tech/ETA concepts, those don't
+   exist in the schema and aren't in scope
+3. **Transaksi Baru** (`/transaksi-baru`) — service multi-picker, plate number
+   input, vehicle type, payment method selector, discount input, notes, submit
+4. **Katalog Layanan** (`/katalog`) — read-only listing of `services`; no
+   add/edit UI (services stay managed via the Supabase dashboard, per "Do not
+   build" below)
+5. **Struk** (`/struk/:id`) — digital receipt using treatment_summary view;
+   shows shop name, date/time, plate, vehicle type, staff name, itemized
+   services, subtotal, discount, total, payment method
+6. **Riwayat Transaksi** (`/riwayat`) — today's treatments list, searchable by
+   plate number
+7. **Laporan** (`/laporan`) — read-only daily numbers computed from
+   `treatments`/`payments` (revenue today, transaction count, avg ticket,
+   7-day revenue, payment-method split). Display only — it doesn't process or
+   move money, just reports what's already been collected.
+8. **Detail Treatment** (`/treatment/:id`) — single treatment view with
+   close/void actions
+
+The dashboard shell (sidebar with the 5 nav pages above + header) lives in
+`src/components/AppShell.jsx`. Its 5-item nav is styled after
+`POS Mockups Standalone.html`, adapted to this app's real screens, Indonesian
+labels, and Rupiah — that mockup is a generic English/USD demo (card
+payments, job-queue scheduling with bay/tech/ETA, in-app catalog editing) and
+is a styling reference only, not a literal spec to replicate.
 
 ## Receipt
 Digital on-screen display only — no print layout yet.

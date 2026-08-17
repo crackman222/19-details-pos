@@ -1,15 +1,16 @@
 import { useState } from 'react'
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+export const PIN_LENGTH = 6
 
 export function PinPad({ staffName, error, onSubmit, onCancel }) {
   const [pin, setPin] = useState('')
 
   function press(digit) {
-    if (pin.length >= 4) return
+    if (pin.length >= PIN_LENGTH) return
     const next = pin + digit
     setPin(next)
-    if (next.length === 4) {
+    if (next.length === PIN_LENGTH) {
       onSubmit(next)
       setPin('')
     }
@@ -23,7 +24,7 @@ export function PinPad({ staffName, error, onSubmit, onCancel }) {
     <div className="pin-pad">
       <p className="pin-pad-staff">{staffName}</p>
       <div className="pin-pad-dots">
-        {[0, 1, 2, 3].map((i) => (
+        {Array.from({ length: PIN_LENGTH }, (_, i) => (
           <span key={i} className={`pin-dot ${i < pin.length ? 'filled' : ''}`} />
         ))}
       </div>

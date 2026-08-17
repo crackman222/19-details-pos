@@ -9,13 +9,19 @@ function generateTreatmentCode() {
   return `ND${y}${m}${d}-${rand}`
 }
 
-async function logStatusChange(treatmentId, status) {
-  const { error } = await supabase
-    .from('treatment_logs')
-    .insert({ treatment_id: treatmentId, action: `status changed to ${status}` })
+async function logAction(treatmentId, action) {
+  const { error } = await supabase.from('treatment_logs').insert({ treatment_id: treatmentId, action })
   if (error) throw error
 }
 
+async function logStatusChange(treatmentId, status) {
+  await logAction(treatmentId, `status changed to ${status}`)
+}
+
+// Payment is optional at creation time — a job can be queued and worked on
+// before anyone pays. Pass paymentMethod only when the customer is paying
+// up front; omit it to leave the treatment at status 'created' with no
+// payment row, to be settled later via recordPayment().
 export async function createTreatment({
   customerName,
   plateNumber,
@@ -60,6 +66,10 @@ export async function createTreatment({
   )
   if (itemsError) throw itemsError
 
+  if (!paymentMethod) {
+    return treatment
+  }
+
   const { error: paymentError } = await supabase.from('payments').insert({
     treatment_id: treatment.id,
     amount: total,
@@ -78,6 +88,38 @@ export async function createTreatment({
   await logStatusChange(treatment.id, 'paid')
 
   return paidTreatment
+}
+
+// Settle payment on a treatment that was queued without paying up front.
+// If work hasn't started yet (still 'created'), this also advances status to
+// 'paid'. If work is further along (e.g. 'completed'), the status is left
+// alone — payment and work progress are independent once the job is moving —
+// and a plain log entry records that payment came in.
+export async function recordPayment(treatmentId, { amount, paymentMethod }) {
+  const { error: paymentError } = await supabase.from('payments').insert({
+    treatment_id: treatmentId,
+    amount,
+    payment_method: paymentMethod,
+  })
+  if (paymentError) throw paymentError
+
+  const { data: current, error: fetchError } = await supabase
+    .from('treatments')
+    .select('status')
+    .eq('id', treatmentId)
+    .single()
+  if (fetchError) throw fetchError
+
+  if (current.status === 'created') {
+    const { error: updateError } = await supabase
+      .from('treatments')
+      .update({ status: 'paid', updated_at: new Date().toISOString() })
+      .eq('id', treatmentId)
+    if (updateError) throw updateError
+    await logStatusChange(treatmentId, 'paid')
+  } else {
+    await logAction(treatmentId, 'payment recorded')
+  }
 }
 
 export async function completeTreatment(id) {
@@ -113,9 +155,42 @@ export async function getTodayTreatments() {
 
   const { data, error } = await supabase
     .from('treatments')
-    .select('*')
+    .select('*, payments(payment_method)')
     .gte('created_at', startOfDay.toISOString())
     .order('created_at', { ascending: false })
+  if (error) throw error
+  return data.map((t) => ({ ...t, isPaid: t.payments.length > 0 }))
+}
+
+export async function getActiveQueue() {
+  const treatments = await getTodayTreatments()
+  return treatments.filter((t) => t.status !== 'closed' && t.status !== 'voided')
+}
+
+// Revenue is money actually collected, so this reads from payments
+// (by paid_at) rather than treatment totals — a queued-but-unpaid treatment
+// shouldn't show up as revenue.
+export async function getLast7DaysRevenue() {
+  const start = new Date()
+  start.setDate(start.getDate() - 6)
+  start.setHours(0, 0, 0, 0)
+
+  const { data, error } = await supabase
+    .from('payments')
+    .select('paid_at, amount')
+    .gte('paid_at', start.toISOString())
+  if (error) throw error
+  return data
+}
+
+export async function getTodayPaymentBreakdown() {
+  const startOfDay = new Date()
+  startOfDay.setHours(0, 0, 0, 0)
+
+  const { data, error } = await supabase
+    .from('payments')
+    .select('payment_method, amount, paid_at')
+    .gte('paid_at', startOfDay.toISOString())
   if (error) throw error
   return data
 }
@@ -123,11 +198,11 @@ export async function getTodayTreatments() {
 export async function searchTreatmentsByPlate(query) {
   const { data, error } = await supabase
     .from('treatments')
-    .select('*')
+    .select('*, payments(payment_method)')
     .ilike('plate_number', `%${query.toUpperCase().trim()}%`)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data
+  return data.map((t) => ({ ...t, isPaid: t.payments.length > 0 }))
 }
 
 export async function getTreatmentDetail(id) {
