@@ -153,6 +153,27 @@ export async function markSelesai(id) {
   await logStatusChange(id, 'selesai')
 }
 
+// Worker assignment — who's actually washing/QC'ing the vehicle, separate
+// from status. staffName is a plain-text snapshot (same convention as
+// treatments.pic), not a live FK — pass null to clear an assignment.
+export async function assignWashStaff(id, staffName) {
+  const { error } = await supabase
+    .from('treatments')
+    .update({ wash_staff: staffName, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+  await logAction(id, staffName ? `wash staff assigned: ${staffName}` : 'wash staff unassigned')
+}
+
+export async function assignQcStaff(id, staffName) {
+  const { error } = await supabase
+    .from('treatments')
+    .update({ qc_staff: staffName, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+  await logAction(id, staffName ? `qc staff assigned: ${staffName}` : 'qc staff unassigned')
+}
+
 export async function closeTreatment(id) {
   const { error } = await supabase
     .from('treatments')

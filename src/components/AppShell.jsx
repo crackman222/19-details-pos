@@ -60,6 +60,15 @@ export function AppShell() {
               <span>{item.label}</span>
             </NavLink>
           ))}
+          {profile?.role === 'admin' && (
+            <NavLink
+              to="/staf"
+              className={({ isActive }) => `app-sidebar-link ${isActive ? 'active' : ''}`}
+            >
+              <span className="app-sidebar-link-dot" />
+              <span>Kelola Staf</span>
+            </NavLink>
+          )}
         </nav>
       </aside>
       <div className="app-main">

@@ -37,5 +37,4 @@ dist-ssr
 .supabase/
 
 # Vercel
-.vercel
-.POS Mockups Standalone.html
+.vercel\
