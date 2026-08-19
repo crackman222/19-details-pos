@@ -1596,6 +1596,112 @@
   margin-top: 0;
 }
 
+/* =========================================================================
+   Kelola Staf (worker management, admin only)
+   ========================================================================= */
+
+.staf-section {
+  margin-bottom: 36px;
+}
+
+.staf-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.staf-section-header .transaksi-section-label {
+  margin: 0;
+}
+
+.staf-section-note {
+  font-size: 12.5px;
+  color: var(--pos-text-faint);
+  margin: 0 0 14px;
+}
+
+/* Office staff and field worker tables are both Nama/Telepon/Status/Actions
+   now that the office table's Role column is gone (every row there is
+   guaranteed 'staff' anyway — see KelolaStaf.jsx) — one shared layout. */
+.staf-table .riwayat-table-row {
+  grid-template-columns: 1.6fr 1.2fr 1fr 1.4fr;
+}
+
+.staf-row-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.staf-row-actions button {
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+.staf-form {
+  margin-bottom: 20px;
+}
+
+.staf-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.staf-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pos-text-muted);
+}
+
+.staf-form-grid input,
+.staf-form-grid select {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--pos-text);
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.staf-edit-row {
+  align-items: center;
+}
+
+.staf-edit-row input,
+.staf-edit-row select {
+  font-size: 13px;
+  padding: 7px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--pos-text);
+  width: 100%;
+}
+
+.staff-picker-select {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pos-text);
+  padding: 6px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.staff-picker-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .detail-hint {
   font-size: 12.5px;
   color: var(--pos-red-text);

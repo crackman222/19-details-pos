@@ -71,8 +71,43 @@ unless a migration file explicitly says to.
 Linked to Supabase auth.users via id (profiles.id IS the auth UUID).
 - id uuid PK (FK → auth.users.id)
 - full_name text
-- role text (default: 'staff')
+- role text (default: 'staff') — 'staff' | 'admin'
+- phone text, nullable
+- is_active boolean (default: true) — "removing" a worker sets this false
+  rather than deleting the row or the auth user; see Auth Rules below
 - created_at timestamptz
+
+RLS: staff can only read their own row. Only role='admin' can read/insert/
+update/delete other rows (see `is_admin()` helper + policies, added
+alongside the worker-management feature). The old "any authenticated user,
+full access" policy on `profiles` is gone — it let any logged-in staff read
+or edit any other staff's row, including their own `role`.
+
+### `active_staff_names` (view)
+`select id, full_name from profiles where is_active = true`. Office staff
+only — the login picker (anon, pre-auth) reads this, never `profiles`
+directly, so phone numbers and roles never reach it. Not used for wash/QC
+assignment; that's field workers, below.
+
+### `field_workers`
+People who do the physical wash/QC work — no dashboard access, no Auth
+account, no PIN. Deliberately a separate table from `profiles`, not another
+`role` value on it: `profiles.id` is FK'd to `auth.users`, and a field
+worker has no account to link to.
+- id uuid PK (default gen_random_uuid())
+- full_name text
+- phone text, nullable
+- is_active boolean (default: true) — deactivate, never delete
+- created_at timestamptz
+
+RLS: admin-only for the full table (phone, inactive workers, insert/update).
+
+### `active_field_workers` (view)
+`select id, full_name from field_workers where is_active = true`. Any
+signed-in staff can read this — it's what the wash/QC assignment dropdown
+(`StaffPicker`) on Detail Treatment uses. Office staff never appear here and
+field workers never appear in `active_staff_names` — the two rosters don't
+overlap.
 
 ### `services`
 The menu of available wash/detailing services.
@@ -93,6 +128,8 @@ One row per vehicle visit. Core entity of the system.
 - subtotal numeric
 - discount numeric
 - total numeric
+- wash_staff text, nullable — snapshot of a `field_workers.full_name`, not a live FK
+- qc_staff text, nullable — same, for whoever did QC
 - created_at timestamptz
 - updated_at timestamptz
 
@@ -172,13 +209,36 @@ Never use auth.uid() directly in frontend queries — always resolve to a profil
 - PINs are 6 digits only — validate before submitting (matches Supabase
   Auth's default 6-character minimum password length, since the PIN doubles
   as the account password)
+- login() must check profiles.is_active after signInWithPassword succeeds,
+  and sign the session back out if false — a deactivated worker's Auth
+  account still has a valid password until someone changes it, so is_active
+  is what actually blocks them, not account deletion
 
-### Creating a new staff member (manual, via Supabase dashboard)
+### Creating a new worker — two different processes, do not conflate them
+**Field workers** (no dashboard access): fully self-serve. An admin adds
+them from **Kelola Staf** (`/staf`) — plain insert into `field_workers`, no
+Auth account, no PIN, nothing server-side involved.
+
+**Office staff** (dashboard access): deliberately *not* self-serve, even for
+admins. Kelola Staf can edit an existing office staff member's name/phone/
+role and deactivate them, but there is no "add office staff" button — a new
+dashboard login needs a real PIN handoff and identity check, so it stays a
+manual process the business owner handles directly, not something any admin
+can trigger from the UI. The `create-worker` Edge Function
+(`supabase/functions/create-worker`) already exists and correctly creates
+both the Auth user and the `profiles` row server-side (client-side
+`supabase.auth.signUp()` would replace the calling admin's own session with
+the new user's, so it can't be done from the browser) — it's just
+intentionally not wired to any button. Wire it up only if explicitly asked.
+
+Manual fallback (Supabase dashboard) — still needed to bootstrap the very
+first admin, since Kelola Staf itself requires an existing admin to access:
 1. Authentication → Users → Add user
    Email: name@nineteendetails.internal
    Password: their 6-digit PIN
 2. Copy the UUID Supabase assigns
-3. Insert into profiles: id (the UUID), full_name, role = 'staff'
+3. Insert into profiles: id (the UUID), full_name, role = 'admin' (or
+   'staff'), is_active = true
 
 ---
 
@@ -247,6 +307,13 @@ Do not add others without confirming with the client.
    move money, just reports what's already been collected.
 8. **Detail Treatment** (`/treatment/:id`) — single treatment view with
    close/void actions
+9. **Kelola Staf** (`/staf`, admin-only) — two sections: office staff
+   (edit/deactivate existing dashboard users only — no in-app "add", see
+   Auth section) and field workers (full add/edit/deactivate, no
+   credentials involved). Deactivate instead of delete, both. Gated by
+   `AdminRoute` client-side and by RLS server-side on `profiles` and
+   `field_workers` (both must agree — client-side gating alone is not
+   enforcement)
 
 The dashboard shell (sidebar with the 5 nav pages above + header) lives in
 `src/components/AppShell.jsx`. Its 5-item nav is styled after
@@ -265,8 +332,13 @@ total, payment method.
 ---
 
 ## Do not build
-- Admin panel for managing staff or services (done via Supabase dashboard)
-- Photo upload feature (table exists but UI deferred)
+- Admin panel for managing services (done via Supabase dashboard) — staff
+  management is now in-app (Kelola Staf, admin-only), this line no longer
+  covers staff
+- Photo upload feature (table exists but UI deferred) — also now built (wash
+  proof photos), this line is stale; kept here as a flag that this doc needs
+  a fuller sync pass against the current status flow (created/paid/diproses/
+  qc/selesai/closed/voided) and other features added outside this doc
 - Multi-location support
 - Customer loyalty or points system
 - Payment processing of any kind — payment is collected physically

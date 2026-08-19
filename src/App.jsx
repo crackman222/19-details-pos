@@ -3,6 +3,7 @@ import './App.css'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { AdminRoute } from './components/AdminRoute'
 import { AppShell } from './components/AppShell'
 import Login from './pages/Login'
 import Antrian from './pages/Antrian'
@@ -12,6 +13,7 @@ import Struk from './pages/Struk'
 import RiwayatTransaksi from './pages/RiwayatTransaksi'
 import Laporan from './pages/Laporan'
 import DetailTreatment from './pages/DetailTreatment'
+import KelolaStaf from './pages/KelolaStaf'
 
 function App() {
   return (
@@ -30,6 +32,9 @@ function App() {
                 <Route path="/laporan" element={<Laporan />} />
                 <Route path="/treatment/:id" element={<DetailTreatment />} />
                 <Route path="/struk/:id" element={<Struk />} />
+                <Route element={<AdminRoute />}>
+                  <Route path="/staf" element={<KelolaStaf />} />
+                </Route>
               </Route>
             </Route>
 
