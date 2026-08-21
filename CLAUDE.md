@@ -120,6 +120,7 @@ One row per vehicle visit. Core entity of the system.
 - id bigint PK
 - treatment_code text UNIQUE
 - customer_name text
+- customer_phone text, nullable
 - plate_number text
 - treatment_type text
 - pic text
@@ -353,3 +354,4 @@ All SQL migrations have been run against the Supabase project in order:
 - 002_rls_policies.sql — row level security
 - 003_auth_setup.sql — auth + staff link
 - 004_add_treatment_items.sql — treatment_items table + view + columns
+- 005_add_customer_phone.sql — customer_phone column on treatments

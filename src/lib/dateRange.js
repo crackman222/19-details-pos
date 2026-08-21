@@ -3,6 +3,14 @@
 export function getPeriodRange(period) {
   const now = new Date()
 
+  if (period === 'daily') {
+    const start = new Date(now)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 1)
+    return { start, end }
+  }
+
   if (period === 'weekly') {
     const start = new Date(now)
     start.setHours(0, 0, 0, 0)
@@ -32,6 +40,10 @@ export function getPeriodRange(period) {
 
 export function formatPeriodLabel(period) {
   const { start, end } = getPeriodRange(period)
+
+  if (period === 'daily') {
+    return `Harian - ${start.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
+  }
 
   if (period === 'weekly') {
     const lastDay = new Date(end.getTime() - 1)

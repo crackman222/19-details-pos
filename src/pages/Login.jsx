@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getActiveProfiles, login } from '../api'
 import { NamePicker } from '../components/NamePicker'
 import { PinPad } from '../components/PinPad'
+import { useAuth } from '../context/useAuth'
 
 export default function Login() {
   const [profiles, setProfiles] = useState([])
@@ -10,6 +11,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loadingProfiles, setLoadingProfiles] = useState(true)
   const navigate = useNavigate()
+  const { setProfile } = useAuth()
 
   useEffect(() => {
     getActiveProfiles()
@@ -22,7 +24,8 @@ export default function Login() {
     if (!selected) return
     setError('')
     try {
-      await login(selected.full_name, pin)
+      const profile = await login(selected.full_name, pin)
+      setProfile(profile)
       navigate('/')
     } catch {
       setError('PIN salah, coba lagi')

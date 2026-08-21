@@ -801,6 +801,7 @@
 }
 
 .ticket-panel input,
+.ticket-panel select,
 .ticket-panel textarea {
   font-size: 13.5px;
   font-weight: 500;
@@ -811,7 +812,12 @@
   background: var(--pos-surface);
 }
 
+.ticket-panel select {
+  cursor: pointer;
+}
+
 .ticket-panel input:focus,
+.ticket-panel select:focus,
 .ticket-panel textarea:focus {
   outline: none;
   border-color: var(--pos-blue);
@@ -912,7 +918,7 @@
 }
 
 .ticket-discount {
-  margin-top: 14px;
+  margin: 14px 0 18px;
 }
 
 .ticket-notes {
@@ -1317,6 +1323,29 @@
   grid-template-columns: 2fr 1fr;
 }
 
+.katalog-service-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.katalog-service-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--pos-blue-lighter);
+  color: var(--pos-blue);
+}
+
+.katalog-service-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
 .antrian-table .riwayat-table-row {
   grid-template-columns: 1.1fr 1fr 1fr 0.9fr 0.8fr 1fr 0.9fr;
   cursor: pointer;
@@ -1491,6 +1520,164 @@
   color: var(--pos-text);
 }
 
+.laporan-workers {
+  margin-top: 20px;
+}
+
+.laporan-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.laporan-panel-header .laporan-panel-title {
+  margin-bottom: 4px;
+}
+
+.laporan-panel-subtitle {
+  font-size: 12.5px;
+  color: var(--pos-text-faint);
+  margin: 0;
+}
+
+.laporan-panel-header select {
+  padding: 9px 12px;
+  border: 1px solid rgba(var(--pos-ink), 0.15);
+  border-radius: 8px;
+  font-size: 13px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.laporan-panel-header select:focus {
+  outline: none;
+  border-color: var(--pos-blue);
+}
+
+.worker-leaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.worker-leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(var(--pos-ink), 0.07);
+  border-radius: 10px;
+  background: var(--pos-surface);
+}
+
+.worker-leaderboard-row.tier-1 {
+  border-color: rgba(232, 178, 26, 0.4);
+  background: rgba(232, 178, 26, 0.08);
+}
+
+.worker-leaderboard-row.tier-2 {
+  border-color: rgba(148, 158, 171, 0.35);
+  background: rgba(148, 158, 171, 0.08);
+}
+
+.worker-leaderboard-row.tier-3 {
+  border-color: rgba(200, 138, 79, 0.35);
+  background: rgba(200, 138, 79, 0.08);
+}
+
+.worker-leaderboard-row.is-you {
+  box-shadow: 0 0 0 2px var(--pos-blue) inset;
+}
+
+.worker-you-tag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--pos-blue);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  vertical-align: middle;
+}
+
+.worker-rank-badge {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--pos-gray-bg);
+  color: var(--pos-gray-text);
+}
+
+.worker-rank-badge.tier-1 {
+  background: #e8b21a;
+  color: #4a3600;
+}
+
+.worker-rank-badge.tier-2 {
+  background: #b7bfc9;
+  color: #333a42;
+}
+
+.worker-rank-badge.tier-3 {
+  background: #c88a4f;
+  color: #422a11;
+}
+
+.worker-avatar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--pos-blue-light);
+  color: var(--pos-blue-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.worker-leaderboard-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.worker-leaderboard-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--pos-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.worker-leaderboard-sub {
+  font-size: 12px;
+  color: var(--pos-text-faint);
+}
+
+.worker-leaderboard-total {
+  flex: none;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--pos-blue);
+}
+
 @media (max-width: 960px) {
   .laporan-panels {
     flex-direction: column;
@@ -1498,6 +1685,11 @@
 
   .laporan-payments {
     width: 100%;
+  }
+
+  .worker-leaderboard-row {
+    padding: 8px 10px;
+    gap: 8px;
   }
 }
 
@@ -1528,7 +1720,8 @@
 }
 
 .payment-method-button.selected {
-  border: 2px solid var(--pos-blue);
+  border-color: var(--pos-blue);
+  box-shadow: 0 0 0 1px var(--pos-blue) inset;
   background: var(--pos-blue-light);
   color: var(--pos-blue-dark);
 }
@@ -1552,7 +1745,8 @@
 }
 
 .pay-toggle button.active {
-  border: 2px solid var(--pos-blue);
+  border-color: var(--pos-blue);
+  box-shadow: 0 0 0 1px var(--pos-blue) inset;
   background: var(--pos-blue-light);
   color: var(--pos-blue-dark);
 }
@@ -1691,9 +1885,9 @@
   font-weight: 500;
   color: var(--pos-text);
   padding: 6px 10px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--pos-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--pos-surface);
   cursor: pointer;
 }
 

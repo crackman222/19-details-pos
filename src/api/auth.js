@@ -23,7 +23,7 @@ export async function login(fullName, pin) {
   // account — check profiles.is_active and refuse to leave them signed in.
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('is_active')
+    .select('*')
     .eq('id', data.user.id)
     .single()
   if (profileError) throw profileError
@@ -32,7 +32,7 @@ export async function login(fullName, pin) {
     throw new Error('Akun tidak aktif')
   }
 
-  return data
+  return profile
 }
 
 export async function logout() {

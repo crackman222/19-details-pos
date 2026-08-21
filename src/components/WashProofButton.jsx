@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
 import { uploadWashProofPhoto } from '../api'
 
-export function WashProofButton({ treatmentId, hasPhoto, onUploaded }) {
+export function WashProofButton({ treatmentId, hasPhoto, onUploaded, onError }) {
   const inputRef = useRef(null)
   const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState('')
 
   async function handleChange(e) {
     const file = e.target.files?.[0]
@@ -12,12 +12,15 @@ export function WashProofButton({ treatmentId, hasPhoto, onUploaded }) {
     if (!file) return
 
     setUploading(true)
-    setError(false)
+    setError('')
     try {
       await uploadWashProofPhoto(treatmentId, file)
       onUploaded(treatmentId)
-    } catch {
-      setError(true)
+    } catch (err) {
+      console.error('Upload bukti foto cuci gagal:', err)
+      const message = err.message || 'Gagal mengunggah foto'
+      setError(message)
+      onError?.(message)
     } finally {
       setUploading(false)
     }
@@ -31,7 +34,7 @@ export function WashProofButton({ treatmentId, hasPhoto, onUploaded }) {
         e.stopPropagation()
         if (!uploading) inputRef.current?.click()
       }}
-      title={hasPhoto ? 'Ganti bukti foto' : 'Unggah bukti foto'}
+      title={error || (hasPhoto ? 'Ganti bukti foto' : 'Unggah bukti foto')}
       role="button"
       aria-label={hasPhoto ? 'Ganti bukti foto cuci' : 'Unggah bukti foto cuci'}
     >
