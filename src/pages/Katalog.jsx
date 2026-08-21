@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getActiveServices } from '../api'
 import { formatRupiah } from '../lib/format'
+import { ServiceIcon } from '../components/ServiceIcon'
 
 export default function Katalog() {
   const [services, setServices] = useState([])
@@ -32,7 +33,10 @@ export default function Katalog() {
           </div>
           {services.map((service) => (
             <div key={service.id} className="riwayat-table-row">
-              <span className="riwayat-plate">{service.name}</span>
+              <span className="riwayat-plate katalog-service-name">
+                <ServiceIcon name={service.name} />
+                {service.name}
+              </span>
               <span className="riwayat-total">{formatRupiah(service.price)}</span>
             </div>
           ))}

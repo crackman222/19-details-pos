@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { logout } from '../api'
+import { initials } from '../lib/format'
 import { useAuth } from '../context/useAuth'
 import { useTheme } from '../context/useTheme'
 
@@ -10,16 +11,6 @@ const NAV_ITEMS = [
   { to: '/riwayat', label: 'Riwayat Transaksi', end: false },
   { to: '/laporan', label: 'Laporan', end: false },
 ]
-
-function initials(fullName) {
-  return fullName
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-}
 
 function todayLabel() {
   const label = new Date().toLocaleDateString('id-ID', {

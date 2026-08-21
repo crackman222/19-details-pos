@@ -14,8 +14,21 @@ export async function uploadWashProofPhoto(treatmentId, file) {
   form.append('treatmentId', String(treatmentId))
 
   const { data, error } = await supabase.functions.invoke('upload-wash-proof', { body: form })
-  if (error) throw error
+  if (error) throw new Error(await extractFunctionErrorMessage(error))
   return data.path
+}
+
+// supabase-js only gives a generic "non-2xx status code" message by default —
+// the actual reason (missing Tinify key, quota, oversized file, etc.) is in
+// the JSON body of error.context, which has to be read separately.
+async function extractFunctionErrorMessage(error) {
+  try {
+    const body = await error.context.json()
+    if (body?.error) return body.error
+  } catch {
+    // error.context wasn't a JSON Response (e.g. network failure) — fall through
+  }
+  return error.message || 'Gagal mengunggah foto'
 }
 
 export async function getWashProofPhoto(treatmentId) {
