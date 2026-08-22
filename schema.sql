@@ -5,6 +5,7 @@ CREATE TABLE public.treatments (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   treatment_code text NOT NULL UNIQUE,
   customer_name text,
+  customer_phone text,
   plate_number text NOT NULL,
   treatment_type text,
   pic text,

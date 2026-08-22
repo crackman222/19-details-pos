@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getLast7DaysRevenue, getTodayPaymentBreakdown } from '../api'
-import { formatRupiah } from '../lib/format'
+import { getLast7DaysRevenue, getTodayPaymentBreakdown, getWorkerOrderCounts } from '../api'
+import { formatRupiah, initials } from '../lib/format'
+import { getPeriodRange, formatPeriodLabel } from '../lib/dateRange'
 import { useAuth } from '../context/useAuth'
 
 const PAYMENT_LABELS = { cash: 'Tunai', qris: 'QRIS', transfer: 'Transfer' }
 const PAYMENT_COLORS = { cash: '#2c6a9e', qris: '#7bb2d9', transfer: '#dce9f3' }
+
+const WORKER_PERIOD_OPTIONS = [
+  { value: 'daily', label: 'Harian' },
+  { value: 'weekly', label: 'Mingguan' },
+  { value: 'monthly', label: 'Bulanan' },
+  { value: 'yearly', label: 'Tahunan' },
+]
 
 function dayLabel(date) {
   const label = date.toLocaleDateString('id-ID', { weekday: 'short' })
@@ -18,6 +26,14 @@ export default function Laporan() {
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [workerPeriod, setWorkerPeriod] = useState('daily')
+  const [workerCounts, setWorkerCounts] = useState([])
+  const [workerLoading, setWorkerLoading] = useState(true)
+  // Non-admin staff only ever see today's leaderboard — the period picker
+  // is admin-only, so their stored workerPeriod (always 'daily', since they
+  // have no control to change it) is redundant here, but this keeps the
+  // fetch pinned to daily even if that ever changes.
+  const effectiveWorkerPeriod = isAdmin ? workerPeriod : 'daily'
 
   useEffect(() => {
     // Staff only get today's numbers — the 7-day trend is history, admin-only.
@@ -29,6 +45,21 @@ export default function Laporan() {
       .catch(() => setError('Gagal memuat laporan'))
       .finally(() => setLoading(false))
   }, [isAdmin])
+
+  // Doesn't flip workerLoading back to true on a period switch — only the
+  // very first load shows "Memuat...", later switches just swap the table
+  // in place once the new counts arrive instead of flashing a spinner.
+  function loadWorkerCounts(period) {
+    const { start, end } = getPeriodRange(period)
+    getWorkerOrderCounts(start, end)
+      .then(setWorkerCounts)
+      .catch(() => setError('Gagal memuat peringkat pekerja'))
+      .finally(() => setWorkerLoading(false))
+  }
+
+  useEffect(() => {
+    loadWorkerCounts(effectiveWorkerPeriod)
+  }, [effectiveWorkerPeriod])
 
   // Revenue/count/avg all come from payments actually collected today, not
   // from treatment totals — a queued-but-unpaid job isn't revenue yet.
@@ -133,6 +164,57 @@ export default function Laporan() {
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="laporan-panel laporan-workers">
+        <div className="laporan-panel-header">
+          <div>
+            <div className="laporan-panel-title">Peringkat Pekerja</div>
+            <p className="laporan-panel-subtitle">{formatPeriodLabel(effectiveWorkerPeriod)}</p>
+          </div>
+          {isAdmin && (
+            <select value={workerPeriod} onChange={(e) => setWorkerPeriod(e.target.value)}>
+              {WORKER_PERIOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {workerLoading && <p className="riwayat-loading">Memuat...</p>}
+        {!workerLoading && workerCounts.length === 0 && (
+          <p className="riwayat-empty">Belum ada transaksi dengan petugas tercatat pada periode ini</p>
+        )}
+        {!workerLoading && workerCounts.length > 0 && (
+          <div className="worker-leaderboard">
+            {workerCounts.map((w, i) => {
+              const rank = i + 1
+              const tier = rank <= 3 ? rank : 'other'
+              const isYou = w.name === profile?.full_name
+              return (
+                <div
+                  key={w.name}
+                  className={`worker-leaderboard-row tier-${tier} ${isYou ? 'is-you' : ''}`}
+                >
+                  <span className={`worker-rank-badge tier-${tier}`}>{rank}</span>
+                  <span className="worker-avatar">{initials(w.name)}</span>
+                  <div className="worker-leaderboard-info">
+                    <span className="worker-leaderboard-name">
+                      {w.name}
+                      {isYou && <span className="worker-you-tag">Anda</span>}
+                    </span>
+                    <span className="worker-leaderboard-sub">
+                      {w.washCount} Cuci · {w.qcCount} QC
+                    </span>
+                  </div>
+                  <span className="worker-leaderboard-total">{w.total}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

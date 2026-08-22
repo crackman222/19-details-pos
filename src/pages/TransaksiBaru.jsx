@@ -1,10 +1,24 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getActiveServices, createTreatment } from '../api'
 import { ServicePicker } from '../components/ServicePicker'
 import { PaymentMethodSelector } from '../components/PaymentMethodSelector'
 import { formatRupiah } from '../lib/format'
 import { useAuth } from '../context/useAuth'
+
+// Vehicle type is inferred from which services are picked (e.g. "Cuci
+// Mobil" implies a car) — only service names that actually name a vehicle
+// signal anything; "Coating Kaca"/"Poles Body" apply to either, so they're
+// silently ignored rather than guessed at.
+function deriveVehicleType(items) {
+  const names = items.map((item) => item.serviceName.toLowerCase())
+  const hasMobil = names.some((name) => name.includes('mobil'))
+  const hasMotor = names.some((name) => name.includes('motor'))
+  if (hasMobil && hasMotor) return 'Mobil & Motor'
+  if (hasMobil) return 'Mobil'
+  if (hasMotor) return 'Motor'
+  return ''
+}
 
 export default function TransaksiBaru() {
   const { profile } = useAuth()
@@ -14,10 +28,12 @@ export default function TransaksiBaru() {
   const [selectedItems, setSelectedItems] = useState([])
   const [plateNumber, setPlateNumber] = useState('')
   const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
   const [treatmentType, setTreatmentType] = useState('')
+  const treatmentTypeEditedRef = useRef(false)
   const [payNow, setPayNow] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('cash')
-  const [discount, setDiscount] = useState('0')
+  const [discountPercent, setDiscountPercent] = useState('0')
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -27,6 +43,13 @@ export default function TransaksiBaru() {
       .then(setServices)
       .catch(() => setError('Gagal memuat daftar layanan'))
   }, [])
+
+  // Keeps Jenis Kendaraan in sync with the picked layanan until the staff
+  // types into it themselves — after that it's theirs to control.
+  useEffect(() => {
+    if (treatmentTypeEditedRef.current) return
+    setTreatmentType(deriveVehicleType(selectedItems))
+  }, [selectedItems])
 
   function addService(service) {
     setSelectedItems((items) => {
@@ -66,7 +89,9 @@ export default function TransaksiBaru() {
     () => selectedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
     [selectedItems]
   )
-  const discountValue = Number(discount) || 0
+  // Rounded to a whole Rupiah — the DB column is numeric but the app never
+  // displays or stores fractional Rupiah (see formatRupiah).
+  const discountValue = Math.round((subtotal * Number(discountPercent)) / 100)
   const total = Math.max(subtotal - discountValue, 0)
 
   async function handleSubmit(e) {
@@ -86,6 +111,7 @@ export default function TransaksiBaru() {
     try {
       const treatment = await createTreatment({
         customerName: customerName.trim() || null,
+        customerPhone: customerPhone.trim() || null,
         plateNumber,
         treatmentType: treatmentType.trim() || null,
         pic: profile.full_name,
@@ -134,10 +160,22 @@ export default function TransaksiBaru() {
             />
           </label>
           <label>
+            Nomor Telepon (opsional)
+            <input
+              type="tel"
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              placeholder="08xxxxxxxxxx"
+            />
+          </label>
+          <label>
             Jenis Kendaraan
             <input
               value={treatmentType}
-              onChange={(e) => setTreatmentType(e.target.value)}
+              onChange={(e) => {
+                treatmentTypeEditedRef.current = true
+                setTreatmentType(e.target.value)
+              }}
               placeholder="Mobil / Motor"
             />
           </label>
@@ -179,8 +217,12 @@ export default function TransaksiBaru() {
         </div>
 
         <label className="ticket-discount">
-          Diskon (Rp)
-          <input type="number" min="0" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+          Diskon
+          <select value={discountPercent} onChange={(e) => setDiscountPercent(e.target.value)}>
+            <option value="0">Tanpa Diskon</option>
+            <option value="10">10%</option>
+            <option value="15">15%</option>
+          </select>
         </label>
 
         <h2 className="transaksi-section-label">Pembayaran</h2>
