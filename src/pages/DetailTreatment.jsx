@@ -36,6 +36,7 @@ export default function DetailTreatment() {
   const [photoUrl, setPhotoUrl] = useState(null)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [error, setError] = useState('')
+  const [photoError, setPhotoError] = useState('')
   const [busy, setBusy] = useState(false)
   const [showPaymentForm, setShowPaymentForm] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('cash')
@@ -195,7 +196,15 @@ export default function DetailTreatment() {
             <span className={`status-badge ${isPaid ? 'status-closed' : 'status-created'}`}>
               {isPaid ? 'Lunas' : 'Belum Dibayar'}
             </span>
-            <WashProofButton treatmentId={treatment.id} hasPhoto={hasPhoto} onUploaded={load} />
+            <WashProofButton
+              treatmentId={treatment.id}
+              hasPhoto={hasPhoto}
+              onUploaded={() => {   
+                setPhotoError('')
+                load()
+              }}
+              onError={setPhotoError}
+            />
           </div>
         </div>
 
@@ -240,6 +249,7 @@ export default function DetailTreatment() {
             <span>Belum ada foto</span>
           )}
         </div>
+        {photoError && <p className="form-error">{photoError}</p>}
 
         <hr />
         <div className="struk-items">

@@ -24,6 +24,7 @@ async function logStatusChange(treatmentId, status) {
 // payment row, to be settled later via recordPayment().
 export async function createTreatment({
   customerName,
+  customerPhone,
   plateNumber,
   treatmentType,
   pic,
@@ -40,6 +41,7 @@ export async function createTreatment({
     .insert({
       treatment_code: generateTreatmentCode(),
       customer_name: customerName,
+      customer_phone: customerPhone,
       plate_number: plateNumber.toUpperCase().trim(),
       treatment_type: treatmentType,
       pic,
@@ -268,6 +270,36 @@ export async function searchTreatmentsByPlate(query, { todayOnly = false } = {})
   const { data, error } = await request
   if (error) throw error
   return data.map((t) => ({ ...t, isPaid: t.payments.length > 0 }))
+}
+
+// Ranks field workers by orders handled in a period, split into wash vs QC
+// duty. Computed from treatments.wash_staff/qc_staff rather than a stored
+// counter — those columns are already the source of truth (see schema
+// notes on the treatments table), so a separate tally would just be a copy
+// that can drift out of sync. Voided treatments don't count as handled work.
+export async function getWorkerOrderCounts(start, end) {
+  const { data, error } = await supabase
+    .from('treatments')
+    .select('wash_staff, qc_staff, status')
+    .gte('created_at', start.toISOString())
+    .lt('created_at', end.toISOString())
+    .neq('status', 'voided')
+  if (error) throw error
+
+  const counts = new Map()
+  function bump(name, field) {
+    if (!name) return
+    if (!counts.has(name)) counts.set(name, { name, washCount: 0, qcCount: 0 })
+    counts.get(name)[field] += 1
+  }
+  for (const t of data) {
+    bump(t.wash_staff, 'washCount')
+    bump(t.qc_staff, 'qcCount')
+  }
+
+  return Array.from(counts.values())
+    .map((w) => ({ ...w, total: w.washCount + w.qcCount }))
+    .sort((a, b) => b.total - a.total)
 }
 
 export async function getTreatmentDetail(id) {
