@@ -36,7 +36,7 @@ export function exportTreatmentsToPdf(treatments, periodLabel) {
     startY: 58,
     head: [['Plat', 'Kendaraan', 'Tanggal', 'Status', 'Bayar', 'Total']],
     body: treatments.map((t) => [
-      t.plate_number,
+      t.plate_number || '-',
       t.treatment_type || '-',
       formatDateTime(t.created_at),
       STATUS_LABELS[t.status] || t.status,

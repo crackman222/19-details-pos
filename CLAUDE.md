@@ -113,16 +113,25 @@ overlap.
 The menu of available wash/detailing services.
 - id bigint PK
 - name text
+- requires_vehicle boolean (default: true) — false for services with no
+  vehicle involved (e.g. Cuci Helm). Drives whether Transaksi Baru asks for
+  a plate number and vehicle brand at all; set it in the Supabase dashboard
+  when adding the service
 - price numeric
 
 ### `treatments`
 One row per vehicle visit. Core entity of the system.
 - id bigint PK
 - treatment_code text UNIQUE
-- customer_name text
-- customer_phone text, nullable
-- plate_number text
-- treatment_type text
+- customer_name text, NOT NULL — required by the ticket form
+- customer_phone text, NOT NULL — same; rows created before this rule were
+  backfilled with generated placeholder names/numbers (migration 007), so
+  older customer contacts are not real data
+- plate_number text, nullable — null when no service on the ticket
+  requires a vehicle
+- treatment_type text, nullable — the vehicle's brand as typed by staff
+  (e.g. "Honda Vario"); it used to hold "Mobil"/"Motor" derived from the
+  service names, so older rows still read that way
 - pic text
 - status text (default: 'created')
 - notes text
@@ -270,7 +279,7 @@ If something needs changing, edit the specific part that needs changing.
 - treatment_items stores name and price as snapshots — not live FKs to services
 - Never DELETE a treatment row — set status to 'voided' instead
 - Write to treatment_logs on every status change
-- plate_number must be .toUpperCase().trim() before saving
+- plate_number must be .toUpperCase().trim() before saving, when there is one
 
 ### Payment methods
 Three options only: cash, qris, transfer
@@ -355,3 +364,7 @@ All SQL migrations have been run against the Supabase project in order:
 - 003_auth_setup.sql — auth + staff link
 - 004_add_treatment_items.sql — treatment_items table + view + columns
 - 005_add_customer_phone.sql — customer_phone column on treatments
+- 006_optional_vehicle_services — services.requires_vehicle column +
+  treatments.plate_number made nullable
+- 007_require_customer_contact — backfilled null customer_name/customer_phone
+  with generated values, then made both columns NOT NULL
