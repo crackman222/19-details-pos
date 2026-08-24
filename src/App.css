@@ -919,6 +919,9 @@
 
 .ticket-discount {
   margin: 14px 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .ticket-notes {
@@ -1022,8 +1025,14 @@
 
 .riwayat-export {
   display: flex;
+  align-items: center;
   gap: 8px;
   margin-bottom: 20px;
+}
+
+.riwayat-period-label {
+  font-size: 13px;
+  color: var(--pos-text-faint);
 }
 
 .riwayat-export select {
@@ -1096,7 +1105,7 @@
 
 .riwayat-table-row {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 1.2fr 0.9fr 0.8fr 1fr;
+  grid-template-columns: 1.7fr 1fr 1.2fr 0.9fr 0.8fr 1fr;
   align-items: center;
   gap: 10px;
   padding: 14px 18px;
@@ -1125,10 +1134,21 @@
   cursor: default;
 }
 
-.riwayat-plate {
+/* Emphasised first column. Kelola Staf and Katalog reuse .riwayat-plate for
+   their own leading column, hence the shared rule. */
+.riwayat-plate,
+.riwayat-service {
   font-size: 13px;
   font-weight: 600;
   color: var(--pos-text);
+}
+
+/* Service names are the widest thing in the treatment tables and several can
+   share one ticket, so that column truncates rather than wrapping the row. */
+.riwayat-service {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .riwayat-total {
@@ -1215,7 +1235,7 @@
 .struk-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   font-size: 13px;
   font-weight: 500;
   color: var(--pos-text);
@@ -1347,7 +1367,7 @@
 }
 
 .antrian-table .riwayat-table-row {
-  grid-template-columns: 1.1fr 1fr 1fr 0.9fr 0.8fr 1fr 0.9fr;
+  grid-template-columns: 1.7fr 1fr 1fr 0.9fr 0.8fr 1fr 0.9fr;
   cursor: pointer;
 }
 
@@ -1726,31 +1746,6 @@
   color: var(--pos-blue-dark);
 }
 
-.pay-toggle {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.pay-toggle button {
-  flex: 1;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--pos-ink), 0.15);
-  background: var(--pos-surface);
-  color: var(--pos-text-muted);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.pay-toggle button.active {
-  border-color: var(--pos-blue);
-  box-shadow: 0 0 0 1px var(--pos-blue) inset;
-  background: var(--pos-blue-light);
-  color: var(--pos-blue-dark);
-}
-
 .pay-toggle-note {
   font-size: 12.5px;
   color: var(--pos-text-faint);
@@ -1894,6 +1889,61 @@
 .staff-picker-select:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.multi-staff-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* The wash-staff row grows a list under its dropdown, and centering would
+   drift the label down that whole block — keep it level with the dropdown.
+   The padding matches the select's own top padding + border. */
+.struk-row-picker {
+  align-items: flex-start;
+}
+
+/* .struk-row-picker > span:first-child {
+  padding-top: 7px;
+} */
+
+.multi-staff-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 160px;
+}
+
+.multi-staff-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pos-text);
+  border-bottom: 1px solid var(--pos-border);
+}
+
+.multi-staff-list-item:last-child {
+  border-bottom: none;
+}
+
+.multi-staff-list-item button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--pos-text-faint);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.multi-staff-list-item button:hover {
+  color: var(--pos-red-text);
 }
 
 .detail-hint {
