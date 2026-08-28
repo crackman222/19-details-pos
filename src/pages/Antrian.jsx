@@ -141,7 +141,7 @@ export default function Antrian() {
         </div>
       )}
       {!loading && queue.length === 0 && !error && (
-        <p className="riwayat-empty">Tidak ada antrian aktif — semua transaksi hari ini sudah ditutup</p>
+        <p className="riwayat-empty">Tidak ada antrian aktif — semua transaksi sudah selesai</p>
       )}
     </div>
   )
