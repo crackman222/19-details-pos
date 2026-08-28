@@ -387,6 +387,15 @@
   color: var(--pos-text);
 }
 
+.app-header-role {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--pos-border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pos-text-faint);
+}
+
 .app-header-logout {
   margin-left: 4px;
   border: 1px solid var(--pos-border);
@@ -576,6 +585,42 @@
   font-weight: 500;
   color: var(--pos-text-muted);
   margin: 0 0 14px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pos-text-muted);
+}
+
+.login-form input {
+  padding: 11px 12px;
+  border: 1px solid rgba(var(--pos-ink), 0.12);
+  border-radius: 10px;
+  background: var(--pos-surface);
+  font-size: 14px;
+  color: var(--pos-text);
+}
+
+.login-form input:focus {
+  outline: none;
+  border-color: var(--pos-blue);
+}
+
+.login-submit {
+  margin-top: 4px;
+  padding: 12px;
+  font-size: 14px;
 }
 
 .name-picker-grid {
@@ -1450,6 +1495,53 @@
   cursor: pointer;
 }
 
+.camera-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  cursor: default;
+}
+
+.camera-stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.camera-preview {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+  background: #000;
+}
+
+.camera-hint {
+  position: absolute;
+  color: #fff;
+  font-size: 14px;
+}
+
+.camera-error {
+  margin: 0;
+  text-align: center;
+  color: var(--pos-red-text);
+  font-size: 13px;
+}
+
+.camera-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
 /* =========================================================================
    Laporan (reports)
    ========================================================================= */
@@ -1811,11 +1903,15 @@
   margin: 0 0 14px;
 }
 
-/* Office staff and field worker tables are both Nama/Telepon/Status/Actions
-   now that the office table's Role column is gone (every row there is
-   guaranteed 'staff' anyway — see KelolaStaf.jsx) — one shared layout. */
+/* One roster table since the field-worker/office split went away:
+   Nama | Telepon | Peran | Akun | Status | aksi */
 .staf-table .riwayat-table-row {
-  grid-template-columns: 1.6fr 1.2fr 1fr 1.4fr;
+  grid-template-columns: 1.4fr 1fr 0.8fr 1fr 0.9fr 1.9fr;
+}
+
+.staf-username {
+  font-size: 12.5px;
+  color: var(--pos-text-faint);
 }
 
 .staf-row-actions {
@@ -1831,6 +1927,23 @@
 
 .staf-form {
   margin-bottom: 20px;
+}
+
+.staf-login-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pos-text-muted);
+  cursor: pointer;
+}
+
+.staf-login-toggle input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--pos-blue);
 }
 
 .staf-form-grid {

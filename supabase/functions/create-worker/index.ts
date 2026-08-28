@@ -29,8 +29,11 @@ function json(body, status = 200) {
   })
 }
 
-function buildFakeEmail(fullName) {
-  return `${fullName.trim().toLowerCase().replace(/\s+/g, '.')}@nineteendetails.internal`
+// Must match buildLoginEmail() in src/api/auth.js — the login screen expands
+// the typed username the same way, so the account is only reachable if the
+// two agree.
+function buildLoginEmail(username) {
+  return `${username.trim().toLowerCase()}@nineteendetails.internal`
 }
 
 Deno.serve(async (req) => {
@@ -64,12 +67,22 @@ Deno.serve(async (req) => {
     return json({ error: 'Request tidak valid.' }, 400)
   }
 
-  const { fullName, phone, role, pin } = body ?? {}
+  // profileId is optional: pass it to give an existing login-less profile
+  // (anyone migrated in from field_workers) an account, keeping their id and
+  // therefore their history. Omit it to create a brand-new person.
+  const { fullName, username, phone, role, pin, profileId } = body ?? {}
   if (!fullName || !fullName.trim()) return json({ error: 'Nama wajib diisi.' }, 400)
+  if (!/^[a-z0-9.]{3,}$/.test((username ?? '').trim().toLowerCase())) {
+    return json({ error: 'Username minimal 3 karakter, hanya huruf kecil, angka, dan titik.' }, 400)
+  }
   if (!/^\d{6}$/.test(pin ?? '')) return json({ error: 'PIN harus 6 digit angka.' }, 400)
-  if (role !== 'staff' && role !== 'admin') return json({ error: 'Role tidak valid.' }, 400)
+  // Keep in step with the profiles_role_check constraint (migration 008).
+  if (!['staff', 'supervisor', 'admin'].includes(role)) {
+    return json({ error: 'Role tidak valid.' }, 400)
+  }
 
-  const email = buildFakeEmail(fullName)
+  const handle = username.trim().toLowerCase()
+  const email = buildLoginEmail(handle)
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
@@ -77,20 +90,32 @@ Deno.serve(async (req) => {
     email_confirm: true,
   })
   if (createError) {
-    return json({ error: createError.message }, 400)
+    // The email is derived from the username, so "already registered" only
+    // ever means the handle is taken — say that instead of leaking the
+    // internal address back to the UI.
+    const taken = /already (been )?registered|already exists/i.test(createError.message)
+    return json({ error: taken ? 'Username sudah dipakai.' : createError.message }, 400)
   }
 
-  const { error: insertError } = await admin.from('profiles').insert({
-    id: created.user.id,
+  const fields = {
     full_name: fullName.trim(),
+    username: handle,
     phone: phone?.trim() || null,
     role,
     is_active: true,
-  })
-  if (insertError) {
+  }
+  // Attaching a login to an existing row has to move that row's id onto the
+  // new auth uid: getCurrentProfile()/login() resolve the profile by
+  // session.user.id, so a mismatch would sign the person in and then fail to
+  // find them. Nothing foreign-keys profiles.id (wash_staff/qc_staff/pic are
+  // text snapshots), so the id is safe to rewrite.
+  const { error: writeError } = profileId
+    ? await admin.from('profiles').update({ id: created.user.id, ...fields }).eq('id', profileId)
+    : await admin.from('profiles').insert({ id: created.user.id, ...fields })
+  if (writeError) {
     // Don't leave an orphaned login with no profile behind on failure.
     await admin.auth.admin.deleteUser(created.user.id)
-    return json({ error: insertError.message }, 400)
+    return json({ error: writeError.message }, 400)
   }
 
   return json({ id: created.user.id, full_name: fullName.trim() })

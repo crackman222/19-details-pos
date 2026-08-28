@@ -4,6 +4,7 @@ import { searchTreatmentsByPlate, getTreatmentsInRange } from '../api'
 import { formatRupiah, formatDateTime } from '../lib/format'
 import { getPeriodRange, formatPeriodLabel } from '../lib/dateRange'
 import { useAuth } from '../context/useAuth'
+import { isAdmin as checkIsAdmin } from '../lib/roles'
 
 const PERIOD_OPTIONS = [
   { value: 'daily', label: 'Harian' },
@@ -24,7 +25,7 @@ const STATUS_LABELS = {
 
 export default function RiwayatTransaksi() {
   const { profile } = useAuth()
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = checkIsAdmin(profile)
   const [treatments, setTreatments] = useState([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)

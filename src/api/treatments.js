@@ -243,11 +243,21 @@ export async function getTreatmentsInRange(start, end) {
 // The queue is work still to be done: new tickets plus jobs in progress. Once
 // a job reaches 'selesai' the work is over, so it drops off the queue the same
 // way 'closed' and 'voided' do — it lives on in Riwayat/Laporan.
+//
+// Deliberately NOT limited to today: a car left overnight, or a ticket nobody
+// closed before going home, is still outstanding work and has to stay visible
+// the next morning. What removes a treatment from the queue is its status, not
+// the calendar. Riwayat and Laporan remain the date-scoped views.
 const QUEUE_STATUSES = ['created', 'paid', 'diproses', 'qc']
 
 export async function getActiveQueue() {
-  const treatments = await getTodayTreatments()
-  return treatments.filter((t) => QUEUE_STATUSES.includes(t.status))
+  const { data, error } = await supabase
+    .from('treatments')
+    .select(LIST_SELECT)
+    .in('status', QUEUE_STATUSES)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data.map(mapTreatmentRow)
 }
 
 // Revenue is money actually collected, so this reads from payments

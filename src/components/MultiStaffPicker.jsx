@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getActiveFieldWorkers } from '../api'
+import { getActiveProfiles } from '../api'
 
 // Same roster and same full_name snapshot convention as StaffPicker, but for
 // duties several people share (washing). The dropdown only lists whoever
@@ -9,7 +9,7 @@ export function MultiStaffPicker({ value, onChange, disabled }) {
   const [workers, setWorkers] = useState([])
 
   useEffect(() => {
-    getActiveFieldWorkers().then(setWorkers).catch(() => {})
+    getActiveProfiles().then(setWorkers).catch(() => {})
   }, [])
 
   const selected = value ?? []
