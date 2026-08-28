@@ -1388,6 +1388,56 @@
   grid-template-columns: 2fr 1fr;
 }
 
+.katalog-section + .katalog-section {
+  margin-top: 32px;
+}
+
+/* Nama | Harga | Stok, plus the restock control for supervisors. */
+.katalog-table.katalog-shelf .riwayat-table-row {
+  grid-template-columns: 2fr 1fr 1fr;
+}
+
+.katalog-table.katalog-shelf-managed .riwayat-table-row {
+  grid-template-columns: 2fr 1fr 1fr 1.4fr;
+}
+
+.katalog-stock-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.katalog-stock-actions input {
+  width: 68px;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  border: 1px solid var(--pos-border);
+  border-radius: 6px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
+}
+
+.katalog-stock-actions button {
+  padding: 6px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.transaksi-section-label-spaced {
+  margin-top: 28px;
+}
+
+.service-card-stock {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--pos-text-faint);
+}
+
+.service-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .katalog-service-name {
   display: flex;
   align-items: center;

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getActiveServices, createTreatment } from '../api'
+import { getActiveServices, getAvailableShelfItems, createTreatment } from '../api'
 import { ServicePicker } from '../components/ServicePicker'
+import { ShelfItemPicker } from '../components/ShelfItemPicker'
 import { formatRupiah } from '../lib/format'
 import { useAuth } from '../context/useAuth'
 
@@ -10,6 +11,7 @@ export default function TransaksiBaru() {
   const navigate = useNavigate()
 
   const [services, setServices] = useState([])
+  const [shelfItems, setShelfItems] = useState([])
   const [selectedItems, setSelectedItems] = useState([])
   const [plateNumber, setPlateNumber] = useState('')
   const [customerName, setCustomerName] = useState('')
@@ -25,40 +27,65 @@ export default function TransaksiBaru() {
     getActiveServices()
       .then(setServices)
       .catch(() => setError('Gagal memuat daftar layanan'))
+    // Only what's in stock right now — a ticket can't sell what isn't there,
+    // and the database rejects it anyway if the last one goes while this form
+    // is open.
+    getAvailableShelfItems()
+      .then(setShelfItems)
+      .catch(() => setError('Gagal memuat daftar barang'))
   }, [])
 
-  function addService(service) {
+  // A ticket line is a service or a shelf item, so lines are keyed by a
+  // composite key rather than a service id — the two id spaces are separate
+  // and would otherwise collide.
+  function addLine(line) {
     setSelectedItems((items) => {
-      const existing = items.find((item) => item.serviceId === service.id)
-      if (existing) {
-        return items.map((item) =>
-          item.serviceId === service.id ? { ...item, quantity: item.quantity + 1 } : item
-        )
-      }
-      return [
-        ...items,
-        {
-          serviceId: service.id,
-          serviceName: service.name,
-          unitPrice: service.price,
-          quantity: 1,
-          requiresVehicle: service.requires_vehicle,
-        },
-      ]
+      const existing = items.find((item) => item.key === line.key)
+      if (!existing) return [...items, { ...line, quantity: 1 }]
+      // maxQuantity is the stock on hand for goods, undefined for services.
+      if (existing.maxQuantity != null && existing.quantity >= existing.maxQuantity) return items
+      return items.map((item) =>
+        item.key === line.key ? { ...item, quantity: item.quantity + 1 } : item
+      )
     })
   }
 
-  function removeService(serviceId) {
-    setSelectedItems((items) => items.filter((item) => item.serviceId !== serviceId))
+  function addService(service) {
+    addLine({
+      key: `service-${service.id}`,
+      serviceId: service.id,
+      serviceName: service.name,
+      unitPrice: service.price,
+      requiresVehicle: service.requires_vehicle,
+    })
   }
 
-  function changeQuantity(serviceId, quantity) {
+  function addShelfItem(item) {
+    addLine({
+      key: `shelf-${item.id}`,
+      shelfItemId: item.id,
+      serviceName: item.name,
+      unitPrice: item.price,
+      requiresVehicle: false,
+      maxQuantity: item.stock,
+    })
+  }
+
+  function removeLine(key) {
+    setSelectedItems((items) => items.filter((item) => item.key !== key))
+  }
+
+  function changeQuantity(key, quantity) {
     if (quantity < 1) {
-      removeService(serviceId)
+      removeLine(key)
       return
     }
     setSelectedItems((items) =>
-      items.map((item) => (item.serviceId === serviceId ? { ...item, quantity } : item))
+      items.map((item) =>
+        item.key === key
+          ? { ...item, quantity: Math.min(quantity, item.maxQuantity ?? quantity) }
+          : item
+      )
     )
   }
 
@@ -91,7 +118,7 @@ export default function TransaksiBaru() {
     setError('')
 
     if (selectedItems.length === 0) {
-      setError('Pilih minimal satu layanan')
+      setError('Pilih minimal satu layanan atau barang')
       return
     }
     if (needsVehicle && !plateNumber.trim()) {
@@ -123,8 +150,10 @@ export default function TransaksiBaru() {
         discount: discountValue,
       })
       navigate(`/treatment/${treatment.id}`)
-    } catch {
-      setError('Gagal menyimpan transaksi, coba lagi')
+    } catch (err) {
+      // Stock can run out between loading this form and submitting it, and
+      // that message names the actual problem — don't bury it.
+      setError(err.message?.includes('Stok') ? err.message : 'Gagal menyimpan transaksi, coba lagi')
     } finally {
       setSubmitting(false)
     }
@@ -138,6 +167,9 @@ export default function TransaksiBaru() {
         </div>
         <h2 className="transaksi-section-label">Layanan</h2>
         <ServicePicker services={services} selectedItems={selectedItems} onAdd={addService} />
+
+        <h2 className="transaksi-section-label transaksi-section-label-spaced">Barang</h2>
+        <ShelfItemPicker items={shelfItems} selectedItems={selectedItems} onAdd={addShelfItem} />
       </div>
 
       <aside className="ticket-panel">
@@ -188,20 +220,27 @@ export default function TransaksiBaru() {
 
         <div className="ticket-lines">
           {selectedItems.length === 0 ? (
-            <p className="ticket-lines-empty">Belum ada layanan — pilih layanan di sebelah kiri</p>
+            <p className="ticket-lines-empty">Belum ada item — pilih layanan atau barang di sebelah kiri</p>
           ) : (
             selectedItems.map((item) => (
-              <div key={item.serviceId} className="ticket-line">
+              <div key={item.key} className="ticket-line">
                 <div className="ticket-line-info">
                   <span className="ticket-line-name">{item.serviceName}</span>
-                  <span className="ticket-line-unit">{formatRupiah(item.unitPrice)} / item</span>
+                  <span className="ticket-line-unit">
+                    {formatRupiah(item.unitPrice)} / item
+                    {item.maxQuantity != null && ` · stok ${item.maxQuantity}`}
+                  </span>
                 </div>
                 <div className="ticket-line-qty">
-                  <button type="button" onClick={() => changeQuantity(item.serviceId, item.quantity - 1)}>
+                  <button type="button" onClick={() => changeQuantity(item.key, item.quantity - 1)}>
                     -
                   </button>
                   <span>{item.quantity}</span>
-                  <button type="button" onClick={() => changeQuantity(item.serviceId, item.quantity + 1)}>
+                  <button
+                    type="button"
+                    onClick={() => changeQuantity(item.key, item.quantity + 1)}
+                    disabled={item.maxQuantity != null && item.quantity >= item.maxQuantity}
+                  >
                     +
                   </button>
                 </div>
@@ -211,8 +250,8 @@ export default function TransaksiBaru() {
                 <button
                   type="button"
                   className="ticket-line-remove"
-                  onClick={() => removeService(item.serviceId)}
-                  aria-label="Hapus layanan"
+                  onClick={() => removeLine(item.key)}
+                  aria-label="Hapus item"
                 >
                   ✕
                 </button>

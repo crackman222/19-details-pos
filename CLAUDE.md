@@ -129,6 +129,26 @@ The menu of available wash/detailing services.
   when adding the service
 - price numeric
 
+### `shelf_items`
+Goods sold off the shelf alongside services (added via migration 010).
+Unlike a service, a shelf item is finite.
+- id bigint PK
+- name text
+- price numeric
+- stock integer, `check (stock >= 0)` — **never written from the client**.
+  A sale draws it down through the `consume_shelf_stock` trigger on
+  `treatment_items`; voiding a treatment puts it back via
+  `restore_shelf_stock` on `treatments`; supervisors adjust it through the
+  `add_shelf_stock(item_id, amount)` RPC, which increments (so simultaneous
+  restocks don't clobber each other) and refuses to go below zero
+- is_active boolean (default: true)
+- created_at timestamptz
+
+RLS: any signed-in user can read; only `is_supervisor()` (which admits
+admins) can insert or update. The two triggers and the RPC are SECURITY
+DEFINER precisely because staff have no update rights here — selling has to
+move stock, managing it must not be possible any other way.
+
 ### `treatments`
 One row per vehicle visit. Core entity of the system.
 - id bigint PK
@@ -156,13 +176,18 @@ One row per vehicle visit. Core entity of the system.
 - updated_at timestamptz
 
 ### `treatment_items`
-Itemized services per treatment. Added via migration 004.
+Itemized lines per treatment — services and shelf items alike. Added via
+migration 004.
 - id bigint PK
 - treatment_id bigint FK → treatments.id
 - service_name text (snapshot — not a live FK to services.name)
 - unit_price numeric (snapshot — not a live FK to services.price)
 - quantity int
 - subtotal numeric
+- shelf_item_id bigint FK → shelf_items.id, nullable (migration 010) — null
+  for a service line, set for a shelf item. This is the one live FK on the
+  row, and it exists to know what stock to move, not for display: name and
+  price stay snapshots either way
 - created_at timestamptz
 
 ### `payments`
@@ -332,11 +357,16 @@ Do not add others without confirming with the client.
    (status `created`/`paid`/`completed`), read from `treatments`; a queue view,
    not a booking/scheduling system — no bay/tech/ETA concepts, those don't
    exist in the schema and aren't in scope
-3. **Transaksi Baru** (`/transaksi-baru`) — service multi-picker, plate number
-   input, vehicle type, payment method selector, discount input, notes, submit
-4. **Katalog Layanan** (`/katalog`) — read-only listing of `services`; no
-   add/edit UI (services stay managed via the Supabase dashboard, per "Do not
-   build" below)
+3. **Transaksi Baru** (`/transaksi-baru`) — service multi-picker plus a shelf
+   item picker (in-stock items only, quantity capped at stock), plate number
+   input, vehicle brand, discount input, notes, submit. Ticket lines are keyed
+   `service-<id>` / `shelf-<id>`, since the two id spaces would otherwise
+   collide
+4. **Katalog** (`/katalog`) — two sections. **Layanan** is a read-only listing
+   of `services` (still managed via the Supabase dashboard). **Barang** lists
+   `shelf_items` with their stock; supervisors and admins additionally get
+   "Tambah Barang" and a +/- stock adjuster there, gated by `isSupervisor()`
+   client-side and by RLS server-side
 5. **Struk** (`/struk/:id`) — digital receipt using treatment_summary view;
    shows shop name, date/time, plate, vehicle type, staff name, itemized
    services, subtotal, discount, total, payment method
@@ -384,7 +414,9 @@ total, payment method.
 - Multi-location support
 - Customer loyalty or points system
 - Payment processing of any kind — payment is collected physically
-- Inventory management
+- Inventory management beyond `shelf_items` stock — no purchase orders,
+  suppliers, cost price, or stock-movement history; the stock number is the
+  whole model
 - Print layout — digital display only for now
 
 ---
@@ -408,3 +440,5 @@ All SQL migrations have been run against the Supabase project in order:
   copied field_workers in as role='staff' with no login, repointed
   active_staff_names at profiles and revoked anon's grant on it, dropped
   active_field_workers and field_workers
+- 010_add_shelf_items — shelf_items table + RLS, treatment_items.shelf_item_id,
+  the consume/restore stock triggers, and the add_shelf_stock() RPC
