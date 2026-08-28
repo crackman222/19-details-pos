@@ -1,4 +1,5 @@
 export * from './auth'
 export * from './services'
+export * from './shelfItems'
 export * from './treatments'
 export * from './photos'

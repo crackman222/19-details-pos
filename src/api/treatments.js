@@ -67,9 +67,22 @@ export async function createTreatment({
       unit_price: item.unitPrice,
       quantity: item.quantity,
       subtotal: item.unitPrice * item.quantity,
+      // Set for goods off the shelf, null for services. A database trigger
+      // draws the stock down from this — see migration 010.
+      shelf_item_id: item.shelfItemId ?? null,
     }))
   )
-  if (itemsError) throw itemsError
+  // The stock trigger rejects the whole insert if someone else sold the last
+  // one between loading the form and submitting. The treatment row already
+  // exists by then, so void it rather than leave an empty ticket sitting in
+  // the queue — treatments are never deleted (see CLAUDE.md).
+  if (itemsError) {
+    await voidTreatment(treatment.id).catch(() => {})
+    if (itemsError.message?.includes('Stok tidak mencukupi')) {
+      throw new Error('Stok barang tidak mencukupi — muat ulang halaman')
+    }
+    throw itemsError
+  }
 
   if (!paymentMethod) {
     return treatment
