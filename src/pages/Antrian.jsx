@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { getActiveQueue, getWashProofMap } from '../api'
 import { formatRupiah, formatDateTime } from '../lib/format'
 import { WashProofButton } from '../components/WashProofButton'
+import { TASK_REMINDER_DAYS, daysOpen, isOverdue } from '../lib/taskReminder'
 
 // Only the statuses that can appear in the queue — 'selesai' and later drop
 // out of it (see QUEUE_STATUSES in api/treatments.js).
@@ -51,6 +52,8 @@ export default function Antrian() {
     }
   }, [queue])
 
+  const overdueTreatments = useMemo(() => queue.filter((t) => isOverdue(t.created_at)), [queue])
+
   return (
     <div className="antrian-screen">
       <div className="riwayat-header">
@@ -96,6 +99,24 @@ export default function Antrian() {
         </div>
       </div>
 
+      {!loading && overdueTreatments.length > 0 && (
+        <div className="overdue-alert" role="alert">
+          <span className="overdue-alert-icon">⚠️</span>
+          <span>
+            {overdueTreatments.length} transaksi sudah {TASK_REMINDER_DAYS} hari atau lebih belum
+            selesai — segera tindak lanjuti:{' '}
+            {overdueTreatments.map((t, i) => (
+              <span key={t.id}>
+                {i > 0 && ', '}
+                <Link to={`/treatment/${t.id}`} className="overdue-alert-link">
+                  {t.plate_number || t.treatment_code}
+                </Link>
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
+
       {error && <p className="form-error">{error}</p>}
       {loading && <p className="riwayat-loading">Memuat...</p>}
 
@@ -110,10 +131,12 @@ export default function Antrian() {
             <span>Waktu</span>
             <span>Bukti Foto</span>
           </div>
-          {queue.map((t) => (
+          {queue.map((t) => {
+            const overdue = isOverdue(t.created_at)
+            return (
             <div
               key={t.id}
-              className="riwayat-table-row"
+              className={`riwayat-table-row ${overdue ? 'overdue' : ''}`}
               role="link"
               tabIndex={0}
               onClick={() => navigate(`/treatment/${t.id}`)}
@@ -128,7 +151,14 @@ export default function Antrian() {
               <span className={`status-badge ${t.isPaid ? 'status-closed' : 'status-created'}`}>
                 {t.isPaid ? 'Lunas' : 'Belum'}
               </span>
-              <span>{formatDateTime(t.created_at)}</span>
+              <span>
+                {formatDateTime(t.created_at)}
+                {overdue && (
+                  <span className="overdue-badge" title={`Sudah ${daysOpen(t.created_at)} hari belum selesai`}>
+                    ⚠️ {daysOpen(t.created_at)} hari
+                  </span>
+                )}
+              </span>
               <span>
                 <WashProofButton
                   treatmentId={t.id}
@@ -137,7 +167,8 @@ export default function Antrian() {
                 />
               </span>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
       {!loading && queue.length === 0 && !error && (

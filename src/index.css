@@ -109,6 +109,31 @@ body {
   margin: 0;
 }
 
+/* Smooth light/dark crossfade: the toggle just flips [data-theme] on <html>,
+   which instantly repoints every --pos-* custom property. Without this,
+   every color driven by those tokens (backgrounds, borders, text, icons)
+   would snap instead of fade. Scoped to color-ish properties only, so it
+   never fights layout transitions (e.g. the mobile sidebar's transform). */
+*,
+*::before,
+*::after {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    box-shadow 0.25s ease,
+    fill 0.25s ease,
+    stroke 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+}
+
 /* #root previously used the Vite starter's centered 1126px landing-page column.
    The POS app is a full-viewport terminal UI (sidebar + content), so it needs
    the whole window instead of a centered, bordered column. */
