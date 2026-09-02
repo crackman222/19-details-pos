@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { logout } from '../api'
 import { initials } from '../lib/format'
@@ -25,6 +26,7 @@ export function AppShell() {
   const { profile, setProfile } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
+  const [navOpen, setNavOpen] = useState(false)
 
   async function handleLogout() {
     await logout()
@@ -34,7 +36,10 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
-      <aside className="app-sidebar">
+      {navOpen && (
+        <div className="app-sidebar-backdrop" onClick={() => setNavOpen(false)} />
+      )}
+      <aside className={`app-sidebar ${navOpen ? 'open' : ''}`}>
         <div className="app-sidebar-brand">
           <span className="app-sidebar-brand-mark">ND</span>
           <span className="app-sidebar-brand-name">Nineteen Details</span>
@@ -45,6 +50,7 @@ export function AppShell() {
               key={item.to}
               to={item.to}
               end={item.end}
+              onClick={() => setNavOpen(false)}
               className={({ isActive }) => `app-sidebar-link ${isActive ? 'active' : ''}`}
             >
               <span className="app-sidebar-link-dot" />
@@ -54,6 +60,7 @@ export function AppShell() {
           {profile?.role === 'admin' && (
             <NavLink
               to="/staf"
+              onClick={() => setNavOpen(false)}
               className={({ isActive }) => `app-sidebar-link ${isActive ? 'active' : ''}`}
             >
               <span className="app-sidebar-link-dot" />
@@ -64,7 +71,18 @@ export function AppShell() {
       </aside>
       <div className="app-main">
         <header className="app-header">
-          <span className="app-header-date">{todayLabel()}</span>
+          <div className="app-header-left">
+            <button
+              type="button"
+              className="app-hamburger"
+              onClick={() => setNavOpen((open) => !open)}
+              aria-label={navOpen ? 'Tutup menu' : 'Buka menu'}
+              aria-expanded={navOpen}
+            >
+              <span />
+            </button>
+            <span className="app-header-date">{todayLabel()}</span>
+          </div>
           <div className="app-header-right">
             <button
               type="button"
