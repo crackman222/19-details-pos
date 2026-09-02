@@ -1433,6 +1433,55 @@
   align-items: center;
 }
 
+.overdue-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--pos-red-bg);
+  color: var(--pos-red-text);
+  border: 1px solid rgba(var(--pos-ink), 0.08);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.overdue-alert-icon {
+  flex: none;
+}
+
+.overdue-alert-link {
+  color: var(--pos-red-text);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.overdue-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--pos-red-bg);
+  color: var(--pos-red-text);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.antrian-table .riwayat-table-row.overdue {
+  background: var(--pos-red-bg);
+}
+
+.antrian-table .riwayat-table-row.overdue:hover {
+  background: var(--pos-red-bg);
+  filter: brightness(0.97);
+}
+
 .katalog-note {
   font-size: 13px;
   color: var(--pos-text-faint);
@@ -2220,7 +2269,12 @@
     max-width: 82vw;
     transform: translateX(-100%);
     box-shadow: 0 0 0 rgba(0, 0, 0, 0);
-    transition: transform 0.22s ease;
+    transition:
+      transform 0.22s ease,
+      background-color 0.25s ease,
+      border-color 0.25s ease,
+      color 0.25s ease,
+      box-shadow 0.25s ease;
   }
 
   .app-sidebar.open {
