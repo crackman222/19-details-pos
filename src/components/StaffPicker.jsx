@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
-import { getActiveFieldWorkers } from '../api'
+import { getActiveProfiles } from '../api'
 
-// Plain <select> of active field workers — used to assign who's
-// washing/QC'ing a job. Office staff (dashboard users) deliberately aren't
-// in this list; they don't do the physical work. value/onChange work in
-// terms of full_name (text snapshot, not worker id) — consistent with how
-// treatments.pic already stores staff identity.
+// Plain <select> of everyone active — used to assign who's washing/QC'ing a
+// job. One roster since migration 009 folded field_workers into profiles, so
+// supervisors and admins appear here too; they can pitch in on a wash.
+// value/onChange work in terms of full_name (text snapshot, not id) —
+// consistent with how treatments.pic already stores staff identity.
 export function StaffPicker({ value, onChange, disabled }) {
   const [workers, setWorkers] = useState([])
 
   useEffect(() => {
-    getActiveFieldWorkers().then(setWorkers).catch(() => {})
+    getActiveProfiles().then(setWorkers).catch(() => {})
   }, [])
 
   return (

@@ -38,14 +38,21 @@ export default function Struk() {
         <p className="struk-meta">{formatDateTime(treatment.created_at)}</p>
         <p className="struk-meta">{treatment.treatment_code}</p>
 
-        <div className="struk-row">
-          <span>Plat</span>
-          <span>{treatment.plate_number}</span>
-        </div>
-        <div className="struk-row">
-          <span>Kendaraan</span>
-          <span>{treatment.treatment_type || '-'}</span>
-        </div>
+        {/* No vehicle on the ticket (e.g. Cuci Helm) means no plate and no
+            brand — the rows are left off the receipt entirely rather than
+            printed empty. */}
+        {treatment.plate_number && (
+          <>
+            <div className="struk-row">
+              <span>Plat</span>
+              <span>{treatment.plate_number}</span>
+            </div>
+            <div className="struk-row">
+              <span>Kendaraan</span>
+              <span>{treatment.treatment_type || '-'}</span>
+            </div>
+          </>
+        )}
         <div className="struk-row">
           <span>Staf</span>
           <span>{treatment.pic}</span>
