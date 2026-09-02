@@ -68,10 +68,33 @@ These tables already exist in Supabase. Do not recreate or alter them
 unless a migration file explicitly says to.
 
 ### `profiles`
-Linked to Supabase auth.users via id (profiles.id IS the auth UUID).
-- id uuid PK (FK → auth.users.id)
+Everyone who works here — one roster, since migration 009 folded
+`field_workers` into this table. Having a dashboard login is optional: a row
+with `username = null` is a person who can be assigned wash/QC duty but
+cannot sign in.
+- id uuid PK (default gen_random_uuid()). For anyone with a login this IS
+  the auth UUID — `login()`/`getCurrentProfile()` resolve the row by
+  `session.user.id`. The FK to `auth.users` was dropped in migration 009 so
+  login-less rows are possible; nothing else FKs this column either, since
+  `pic`/`wash_staff`/`qc_staff` are text snapshots
+- username text UNIQUE, nullable — the login handle. The address actually
+  signed in with is always `username@nineteendetails.internal`, so it must
+  match the local part of the Auth account's email. Null = no login yet
 - full_name text
-- role text (default: 'staff') — 'staff' | 'admin'
+- role text (default: 'staff') — 'staff' | 'supervisor' | 'admin', enforced
+  by the `profiles_role_check` constraint (migration 008). In increasing
+  order of reach:
+  - `staff` — the people doing the work. Dashboard, Transaksi Baru, Katalog,
+    plus Detail Treatment / Struk (not nav items, but where a ticket is
+    actually worked, and where Transaksi Baru lands after submitting)
+  - `supervisor` — everything staff sees plus Riwayat and Laporan. This is
+    what `staff` meant before the split; the existing office staff were
+    migrated to it. Managing wages is planned here but not built yet
+  - `admin` — everything, including Kelola Staf
+  Client-side gating is `AdminRoute` / `SupervisorRoute` + the `access` field
+  on `AppShell`'s NAV_ITEMS; role helpers live in `src/lib/roles.js`. RLS
+  has `is_admin()` and `is_supervisor()` (the latter admits admins too, and
+  is not yet used by any policy)
 - phone text, nullable
 - is_active boolean (default: true) — "removing" a worker sets this false
   rather than deleting the row or the auth user; see Auth Rules below
@@ -84,64 +107,87 @@ full access" policy on `profiles` is gone — it let any logged-in staff read
 or edit any other staff's row, including their own `role`.
 
 ### `active_staff_names` (view)
-`select id, full_name from profiles where is_active = true`. Office staff
-only — the login picker (anon, pre-auth) reads this, never `profiles`
-directly, so phone numbers and roles never reach it. Not used for wash/QC
-assignment; that's field workers, below.
+`select id, full_name from profiles where is_active = true`. Names only, so
+phone numbers, roles, and usernames never reach it. It feeds the wash/QC
+assignment dropdown (`StaffPicker` / `MultiStaffPicker`) and is readable by
+any signed-in user — the view runs with owner privileges, which is what gets
+past the admin-only RLS on `profiles` itself. **Not** anon-readable: the
+grant to `anon` was revoked in migration 009, when the login name picker was
+replaced by a typed username, so an anonymous visitor can no longer
+enumerate who works here.
 
-### `field_workers`
-People who do the physical wash/QC work — no dashboard access, no Auth
-account, no PIN. Deliberately a separate table from `profiles`, not another
-`role` value on it: `profiles.id` is FK'd to `auth.users`, and a field
-worker has no account to link to.
-- id uuid PK (default gen_random_uuid())
-- full_name text
-- phone text, nullable
-- is_active boolean (default: true) — deactivate, never delete
-- created_at timestamptz
-
-RLS: admin-only for the full table (phone, inactive workers, insert/update).
-
-### `active_field_workers` (view)
-`select id, full_name from field_workers where is_active = true`. Any
-signed-in staff can read this — it's what the wash/QC assignment dropdown
-(`StaffPicker`) on Detail Treatment uses. Office staff never appear here and
-field workers never appear in `active_staff_names` — the two rosters don't
-overlap.
+`field_workers` and `active_field_workers` were dropped in migration 009 —
+everyone is in `profiles` now.
 
 ### `services`
 The menu of available wash/detailing services.
 - id bigint PK
 - name text
+- requires_vehicle boolean (default: true) — false for services with no
+  vehicle involved (e.g. Cuci Helm). Drives whether Transaksi Baru asks for
+  a plate number and vehicle brand at all; set it in the Supabase dashboard
+  when adding the service
 - price numeric
+
+### `shelf_items`
+Goods sold off the shelf alongside services (added via migration 010).
+Unlike a service, a shelf item is finite.
+- id bigint PK
+- name text
+- price numeric
+- stock integer, `check (stock >= 0)` — **never written from the client**.
+  A sale draws it down through the `consume_shelf_stock` trigger on
+  `treatment_items`; voiding a treatment puts it back via
+  `restore_shelf_stock` on `treatments`; supervisors adjust it through the
+  `add_shelf_stock(item_id, amount)` RPC, which increments (so simultaneous
+  restocks don't clobber each other) and refuses to go below zero
+- is_active boolean (default: true)
+- created_at timestamptz
+
+RLS: any signed-in user can read; only `is_supervisor()` (which admits
+admins) can insert or update. The two triggers and the RPC are SECURITY
+DEFINER precisely because staff have no update rights here — selling has to
+move stock, managing it must not be possible any other way.
 
 ### `treatments`
 One row per vehicle visit. Core entity of the system.
 - id bigint PK
 - treatment_code text UNIQUE
-- customer_name text
-- customer_phone text, nullable
-- plate_number text
-- treatment_type text
+- customer_name text, NOT NULL — required by the ticket form
+- customer_phone text, NOT NULL — same; rows created before this rule were
+  backfilled with generated placeholder names/numbers (migration 007), so
+  older customer contacts are not real data
+- plate_number text, nullable — null when no service on the ticket
+  requires a vehicle
+- treatment_type text, nullable — the vehicle's brand as typed by staff
+  (e.g. "Honda Vario"); it used to hold "Mobil"/"Motor" derived from the
+  service names, so older rows still read that way
 - pic text
 - status text (default: 'created')
 - notes text
 - subtotal numeric
 - discount numeric
 - total numeric
-- wash_staff text, nullable — snapshot of a `field_workers.full_name`, not a live FK
+- wash_staff text, nullable — snapshot of a `profiles.full_name`, not a live
+  FK; holds several names comma-separated when a wash is shared (see
+  `src/lib/staffNames.js`)
 - qc_staff text, nullable — same, for whoever did QC
 - created_at timestamptz
 - updated_at timestamptz
 
 ### `treatment_items`
-Itemized services per treatment. Added via migration 004.
+Itemized lines per treatment — services and shelf items alike. Added via
+migration 004.
 - id bigint PK
 - treatment_id bigint FK → treatments.id
 - service_name text (snapshot — not a live FK to services.name)
 - unit_price numeric (snapshot — not a live FK to services.price)
 - quantity int
 - subtotal numeric
+- shelf_item_id bigint FK → shelf_items.id, nullable (migration 010) — null
+  for a service line, set for a shelf item. This is the one live FK on the
+  row, and it exists to know what stock to move, not for display: name and
+  price stay snapshots either way
 - created_at timestamptz
 
 ### `payments`
@@ -174,21 +220,26 @@ Use this for the receipt screen and treatment history list.
 
 ---
 
-## Auth — name picker + PIN
+## Auth — username + PIN
 
 ### Flow
-1. App loads → fetch all active profiles → display as name buttons
-2. Staff taps their name
-3. Staff enters 6-digit PIN on a number pad
-4. App constructs the fake email: `{name_lowercase_no_spaces}@nineteendetails.internal`
-5. App calls Supabase signInWithPassword with that email and the PIN as password
-6. On success → redirect to main screen
+1. Staff types their username and 6-digit PIN (`src/pages/Login.jsx`)
+2. App builds the login email: `{username}@nineteendetails.internal`
+3. App calls Supabase signInWithPassword with that email and the PIN as password
+4. login() loads the profile and rejects it if `is_active` is false
+5. On success → redirect to main screen
 
-### Fake email convention
-`full_name` lowercased, spaces replaced with dots, plus the domain.
-Examples:
-- "Budi Santoso" → budi.santoso@nineteendetails.internal
-- "Rina" → rina@nineteendetails.internal
+There is no name picker any more. Listing every active person before sign-in
+advertised the roster to anyone who opened the page and made it easy to tap
+the wrong name; the username is now something you have to know.
+
+### Login email convention
+`profiles.username` + `@nineteendetails.internal` — see `buildLoginEmail()`
+in `src/api/auth.js`, mirrored in the create-worker Edge Function.
+
+The username is a **stored, stable handle**, never derived from `full_name`.
+Deriving it was a live bug: renaming someone in Kelola Staf changed the
+derived address while their Auth email stayed put, silently locking them out.
 
 This email is never shown in the UI anywhere.
 
@@ -215,31 +266,45 @@ Never use auth.uid() directly in frontend queries — always resolve to a profil
   account still has a valid password until someone changes it, so is_active
   is what actually blocks them, not account deletion
 
-### Creating a new worker — two different processes, do not conflate them
-**Field workers** (no dashboard access): fully self-serve. An admin adds
-them from **Kelola Staf** (`/staf`) — plain insert into `field_workers`, no
-Auth account, no PIN, nothing server-side involved.
+### Adding people — two separate steps, do not conflate them
+Both live in **Kelola Staf** (`/staf`), admin-only.
 
-**Office staff** (dashboard access): deliberately *not* self-serve, even for
-admins. Kelola Staf can edit an existing office staff member's name/phone/
-role and deactivate them, but there is no "add office staff" button — a new
-dashboard login needs a real PIN handoff and identity check, so it stays a
-manual process the business owner handles directly, not something any admin
-can trigger from the UI. The `create-worker` Edge Function
-(`supabase/functions/create-worker`) already exists and correctly creates
-both the Auth user and the `profiles` row server-side (client-side
-`supabase.auth.signUp()` would replace the calling admin's own session with
-the new user's, so it can't be done from the browser) — it's just
-intentionally not wired to any button. Wire it up only if explicitly asked.
+**Adding someone to the roster** (no login): a plain insert into `profiles`
+with `username` left null. They can be assigned wash/QC duty immediately and
+cannot sign in.
 
-Manual fallback (Supabase dashboard) — still needed to bootstrap the very
-first admin, since Kelola Staf itself requires an existing admin to access:
+**Giving someone a login**: tick "buat akun login" when adding, or press
+**Buat Akun** on an existing roster row. Either way it goes through the
+`create-worker` Edge Function (`supabase/functions/create-worker`, deployed),
+which holds the service role key: it creates the Auth user with
+`username@nineteendetails.internal` and the PIN as password, then writes the
+`profiles` row. This cannot be done client-side — `supabase.auth.signUp()`
+would replace the calling admin's own session with the new user's.
+
+The function takes an optional `profileId`. Pass it to attach a login to
+someone already on the roster: it moves that row's `id` onto the new auth
+UUID and sets `username`, so the person keeps their row. If the profile write
+fails, the just-created Auth user is deleted so no orphaned login is left
+behind.
+
+The admin types the PIN and hands it over in person — the app never
+generates, displays, or stores one.
+
+Manual route (Supabase dashboard) — still how the very first admin is
+bootstrapped, since Kelola Staf requires an existing admin to access:
 1. Authentication → Users → Add user
-   Email: name@nineteendetails.internal
+   Email: username@nineteendetails.internal
    Password: their 6-digit PIN
 2. Copy the UUID Supabase assigns
-3. Insert into profiles: id (the UUID), full_name, role = 'admin' (or
-   'staff'), is_active = true
+3. Either update the person's existing profiles row (set `id` to that UUID
+   and `username` to the local part), or insert a new row with id, full_name,
+   username, role, is_active = true
+
+### Resetting a forgotten PIN
+Supabase dashboard → Authentication → Users → find
+`username@nineteendetails.internal` → ⋮ → Reset password / Update user →
+set a new 6-digit password. Nothing in `profiles` changes. There is no
+in-app PIN change or reset flow, by design.
 
 ---
 
@@ -270,7 +335,7 @@ If something needs changing, edit the specific part that needs changing.
 - treatment_items stores name and price as snapshots — not live FKs to services
 - Never DELETE a treatment row — set status to 'voided' instead
 - Write to treatment_logs on every status change
-- plate_number must be .toUpperCase().trim() before saving
+- plate_number must be .toUpperCase().trim() before saving, when there is one
 
 ### Payment methods
 Three options only: cash, qris, transfer
@@ -287,16 +352,21 @@ Do not add others without confirming with the client.
 
 ## Screens to build
 
-1. **Login** — name picker grid + 6-digit PIN pad, no email/password fields
+1. **Login** — typed username + 6-digit PIN, no roster listing, no email field
 2. **Antrian Hari Ini** (dashboard home, `/`) — today's treatments still open
    (status `created`/`paid`/`completed`), read from `treatments`; a queue view,
    not a booking/scheduling system — no bay/tech/ETA concepts, those don't
    exist in the schema and aren't in scope
-3. **Transaksi Baru** (`/transaksi-baru`) — service multi-picker, plate number
-   input, vehicle type, payment method selector, discount input, notes, submit
-4. **Katalog Layanan** (`/katalog`) — read-only listing of `services`; no
-   add/edit UI (services stay managed via the Supabase dashboard, per "Do not
-   build" below)
+3. **Transaksi Baru** (`/transaksi-baru`) — service multi-picker plus a shelf
+   item picker (in-stock items only, quantity capped at stock), plate number
+   input, vehicle brand, discount input, notes, submit. Ticket lines are keyed
+   `service-<id>` / `shelf-<id>`, since the two id spaces would otherwise
+   collide
+4. **Katalog** (`/katalog`) — two sections. **Layanan** is a read-only listing
+   of `services` (still managed via the Supabase dashboard). **Barang** lists
+   `shelf_items` with their stock; supervisors and admins additionally get
+   "Tambah Barang" and a +/- stock adjuster there, gated by `isSupervisor()`
+   client-side and by RLS server-side
 5. **Struk** (`/struk/:id`) — digital receipt using treatment_summary view;
    shows shop name, date/time, plate, vehicle type, staff name, itemized
    services, subtotal, discount, total, payment method
@@ -308,13 +378,14 @@ Do not add others without confirming with the client.
    move money, just reports what's already been collected.
 8. **Detail Treatment** (`/treatment/:id`) — single treatment view with
    close/void actions
-9. **Kelola Staf** (`/staf`, admin-only) — two sections: office staff
-   (edit/deactivate existing dashboard users only — no in-app "add", see
-   Auth section) and field workers (full add/edit/deactivate, no
-   credentials involved). Deactivate instead of delete, both. Gated by
-   `AdminRoute` client-side and by RLS server-side on `profiles` and
-   `field_workers` (both must agree — client-side gating alone is not
-   enforcement)
+9. **Kelola Staf** (`/staf`, admin-only) — one roster of everyone in
+   `profiles`: add (with or without a login), give an existing person a login
+   via **Buat Akun**, edit name/phone/role, deactivate. Usernames are shown
+   but never editable after creation — the handle is the local part of the
+   Auth email, which only the Edge Function can change. Deactivate instead of
+   delete. Admins and the viewer's own row are filtered out. Gated by
+   `AdminRoute` client-side and by RLS server-side on `profiles` (both must
+   agree — client-side gating alone is not enforcement)
 
 The dashboard shell (sidebar with the 5 nav pages above + header) lives in
 `src/components/AppShell.jsx`. Its 5-item nav is styled after
@@ -343,7 +414,9 @@ total, payment method.
 - Multi-location support
 - Customer loyalty or points system
 - Payment processing of any kind — payment is collected physically
-- Inventory management
+- Inventory management beyond `shelf_items` stock — no purchase orders,
+  suppliers, cost price, or stock-movement history; the stock number is the
+  whole model
 - Print layout — digital display only for now
 
 ---
@@ -355,3 +428,17 @@ All SQL migrations have been run against the Supabase project in order:
 - 003_auth_setup.sql — auth + staff link
 - 004_add_treatment_items.sql — treatment_items table + view + columns
 - 005_add_customer_phone.sql — customer_phone column on treatments
+- 006_optional_vehicle_services — services.requires_vehicle column +
+  treatments.plate_number made nullable
+- 007_require_customer_contact — backfilled null customer_name/customer_phone
+  with generated values, then made both columns NOT NULL
+- 008_add_supervisor_role — migrated existing role='staff' rows to
+  'supervisor', added the profiles_role_check constraint, added the
+  is_supervisor() helper
+- 009_merge_field_workers_into_profiles — dropped the profiles→auth.users FK,
+  added profiles.username (backfilled from each account's auth email),
+  copied field_workers in as role='staff' with no login, repointed
+  active_staff_names at profiles and revoked anon's grant on it, dropped
+  active_field_workers and field_workers
+- 010_add_shelf_items — shelf_items table + RLS, treatment_items.shelf_item_id,
+  the consume/restore stock triggers, and the add_shelf_stock() RPC

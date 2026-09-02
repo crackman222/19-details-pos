@@ -441,6 +441,15 @@
   color: var(--pos-text);
 }
 
+.app-header-role {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--pos-border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pos-text-faint);
+}
+
 .app-header-logout {
   margin-left: 4px;
   border: 1px solid var(--pos-border);
@@ -634,6 +643,42 @@
   font-weight: 500;
   color: var(--pos-text-muted);
   margin: 0 0 14px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pos-text-muted);
+}
+
+.login-form input {
+  padding: 11px 12px;
+  border: 1px solid rgba(var(--pos-ink), 0.12);
+  border-radius: 10px;
+  background: var(--pos-surface);
+  font-size: 14px;
+  color: var(--pos-text);
+}
+
+.login-form input:focus {
+  outline: none;
+  border-color: var(--pos-blue);
+}
+
+.login-submit {
+  margin-top: 4px;
+  padding: 12px;
+  font-size: 14px;
 }
 
 .name-picker-grid {
@@ -977,6 +1022,9 @@
 
 .ticket-discount {
   margin: 14px 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .ticket-notes {
@@ -1080,8 +1128,14 @@
 
 .riwayat-export {
   display: flex;
+  align-items: center;
   gap: 8px;
   margin-bottom: 20px;
+}
+
+.riwayat-period-label {
+  font-size: 13px;
+  color: var(--pos-text-faint);
 }
 
 .riwayat-export select {
@@ -1156,7 +1210,7 @@
 
 .riwayat-table-row {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 1.2fr 0.9fr 0.8fr 1fr;
+  grid-template-columns: 1.7fr 1fr 1.2fr 0.9fr 0.8fr 1fr;
   min-width: 640px;
   align-items: center;
   gap: 10px;
@@ -1186,10 +1240,21 @@
   cursor: default;
 }
 
-.riwayat-plate {
+/* Emphasised first column. Kelola Staf and Katalog reuse .riwayat-plate for
+   their own leading column, hence the shared rule. */
+.riwayat-plate,
+.riwayat-service {
   font-size: 13px;
   font-weight: 600;
   color: var(--pos-text);
+}
+
+/* Service names are the widest thing in the treatment tables and several can
+   share one ticket, so that column truncates rather than wrapping the row. */
+.riwayat-service {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .riwayat-total {
@@ -1276,7 +1341,7 @@
 .struk-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   font-size: 13px;
   font-weight: 500;
   color: var(--pos-text);
@@ -1385,6 +1450,56 @@
   min-width: 0;
 }
 
+.katalog-section + .katalog-section {
+  margin-top: 32px;
+}
+
+/* Nama | Harga | Stok, plus the restock control for supervisors. */
+.katalog-table.katalog-shelf .riwayat-table-row {
+  grid-template-columns: 2fr 1fr 1fr;
+}
+
+.katalog-table.katalog-shelf-managed .riwayat-table-row {
+  grid-template-columns: 2fr 1fr 1fr 1.4fr;
+}
+
+.katalog-stock-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.katalog-stock-actions input {
+  width: 68px;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  border: 1px solid var(--pos-border);
+  border-radius: 6px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
+}
+
+.katalog-stock-actions button {
+  padding: 6px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.transaksi-section-label-spaced {
+  margin-top: 28px;
+}
+
+.service-card-stock {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--pos-text-faint);
+}
+
+.service-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .katalog-service-name {
   display: flex;
   align-items: center;
@@ -1409,7 +1524,7 @@
 }
 
 .antrian-table .riwayat-table-row {
-  grid-template-columns: 1.1fr 1fr 1fr 0.9fr 0.8fr 1fr 0.9fr;
+  grid-template-columns: 1.7fr 1fr 1fr 0.9fr 0.8fr 1fr 0.9fr;
   min-width: 780px;
   cursor: pointer;
 }
@@ -1491,6 +1606,53 @@
   color: #fff;
   font-size: 16px;
   cursor: pointer;
+}
+
+.camera-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  cursor: default;
+}
+
+.camera-stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.camera-preview {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+  background: #000;
+}
+
+.camera-hint {
+  position: absolute;
+  color: #fff;
+  font-size: 14px;
+}
+
+.camera-error {
+  margin: 0;
+  text-align: center;
+  color: var(--pos-red-text);
+  font-size: 13px;
+}
+
+.camera-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
 }
 
 /* =========================================================================
@@ -1789,31 +1951,6 @@
   color: var(--pos-blue-dark);
 }
 
-.pay-toggle {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.pay-toggle button {
-  flex: 1;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--pos-ink), 0.15);
-  background: var(--pos-surface);
-  color: var(--pos-text-muted);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.pay-toggle button.active {
-  border-color: var(--pos-blue);
-  box-shadow: 0 0 0 1px var(--pos-blue) inset;
-  background: var(--pos-blue-light);
-  color: var(--pos-blue-dark);
-}
-
 .pay-toggle-note {
   font-size: 12.5px;
   color: var(--pos-text-faint);
@@ -1879,12 +2016,16 @@
   margin: 0 0 14px;
 }
 
-/* Office staff and field worker tables are both Nama/Telepon/Status/Actions
-   now that the office table's Role column is gone (every row there is
-   guaranteed 'staff' anyway — see KelolaStaf.jsx) — one shared layout. */
+/* One roster table since the field-worker/office split went away:
+   Nama | Telepon | Peran | Akun | Status | aksi */
 .staf-table .riwayat-table-row {
-  grid-template-columns: 1.6fr 1.2fr 1fr 1.4fr;
-  min-width: 560px;
+  grid-template-columns: 1.4fr 1fr 0.8fr 1fr 0.9fr 1.9fr;
+  min-width: 680px;
+}
+
+.staf-username {
+  font-size: 12.5px;
+  color: var(--pos-text-faint);
 }
 
 .staf-row-actions {
@@ -1900,6 +2041,23 @@
 
 .staf-form {
   margin-bottom: 20px;
+}
+
+.staf-login-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pos-text-muted);
+  cursor: pointer;
+}
+
+.staf-login-toggle input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--pos-blue);
 }
 
 .staf-form-grid {
@@ -1958,6 +2116,61 @@
 .staff-picker-select:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.multi-staff-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* The wash-staff row grows a list under its dropdown, and centering would
+   drift the label down that whole block — keep it level with the dropdown.
+   The padding matches the select's own top padding + border. */
+.struk-row-picker {
+  align-items: flex-start;
+}
+
+/* .struk-row-picker > span:first-child {
+  padding-top: 7px;
+} */
+
+.multi-staff-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 160px;
+}
+
+.multi-staff-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pos-text);
+  border-bottom: 1px solid var(--pos-border);
+}
+
+.multi-staff-list-item:last-child {
+  border-bottom: none;
+}
+
+.multi-staff-list-item button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--pos-text-faint);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.multi-staff-list-item button:hover {
+  color: var(--pos-red-text);
 }
 
 .detail-hint {

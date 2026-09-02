@@ -4,13 +4,17 @@ import { logout } from '../api'
 import { initials } from '../lib/format'
 import { useAuth } from '../context/useAuth'
 import { useTheme } from '../context/useTheme'
+import { isAdmin, isSupervisor, ROLE_LABELS } from '../lib/roles'
 
+// `access` mirrors the route guards in App.jsx — keep the two in step, since
+// this only decides what's shown and the guards decide what's reachable.
 const NAV_ITEMS = [
-  { to: '/', label: 'Antrian Hari Ini', end: true },
-  { to: '/transaksi-baru', label: 'Transaksi Baru', end: false },
-  { to: '/katalog', label: 'Katalog Layanan', end: false },
-  { to: '/riwayat', label: 'Riwayat Transaksi', end: false },
-  { to: '/laporan', label: 'Laporan', end: false },
+  { to: '/', label: 'Dashboard', end: true, access: 'all' },
+  { to: '/transaksi-baru', label: 'Transaksi Baru', end: false, access: 'all' },
+  { to: '/katalog', label: 'Katalog Layanan', end: false, access: 'all' },
+  { to: '/riwayat', label: 'Riwayat Transaksi', end: false, access: 'supervisor' },
+  { to: '/laporan', label: 'Laporan', end: false, access: 'supervisor' },
+  { to: '/staf', label: 'Kelola Staf', end: false, access: 'admin' },
 ]
 
 function todayLabel() {
@@ -27,6 +31,12 @@ export function AppShell() {
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [navOpen, setNavOpen] = useState(false)
+
+  function canSee(item) {
+    if (item.access === 'admin') return isAdmin(profile)
+    if (item.access === 'supervisor') return isSupervisor(profile)
+    return true
+  }
 
   async function handleLogout() {
     await logout()
@@ -45,7 +55,7 @@ export function AppShell() {
           <span className="app-sidebar-brand-name">Nineteen Details</span>
         </div>
         <nav className="app-sidebar-nav">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.filter(canSee).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -57,16 +67,6 @@ export function AppShell() {
               <span>{item.label}</span>
             </NavLink>
           ))}
-          {profile?.role === 'admin' && (
-            <NavLink
-              to="/staf"
-              onClick={() => setNavOpen(false)}
-              className={({ isActive }) => `app-sidebar-link ${isActive ? 'active' : ''}`}
-            >
-              <span className="app-sidebar-link-dot" />
-              <span>Kelola Staf</span>
-            </NavLink>
-          )}
         </nav>
       </aside>
       <div className="app-main">
@@ -97,6 +97,7 @@ export function AppShell() {
               <div className="app-header-user">
                 <span className="app-header-avatar">{initials(profile.full_name)}</span>
                 <span className="app-header-name">{profile.full_name}</span>
+                <span className="app-header-role">{ROLE_LABELS[profile.role] || profile.role}</span>
                 <button type="button" className="app-header-logout" onClick={handleLogout}>
                   Keluar
                 </button>

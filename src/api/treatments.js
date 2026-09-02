@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { formatStaffNames, parseStaffNames } from '../lib/staffNames'
 
 function generateTreatmentCode() {
   const now = new Date()
@@ -42,7 +43,9 @@ export async function createTreatment({
       treatment_code: generateTreatmentCode(),
       customer_name: customerName,
       customer_phone: customerPhone,
-      plate_number: plateNumber.toUpperCase().trim(),
+      // Null for services with no vehicle involved (e.g. Cuci Helm) — the
+      // column is nullable as of migration 006.
+      plate_number: plateNumber ? plateNumber.toUpperCase().trim() : null,
       treatment_type: treatmentType,
       pic,
       status: 'created',
@@ -64,9 +67,22 @@ export async function createTreatment({
       unit_price: item.unitPrice,
       quantity: item.quantity,
       subtotal: item.unitPrice * item.quantity,
+      // Set for goods off the shelf, null for services. A database trigger
+      // draws the stock down from this — see migration 010.
+      shelf_item_id: item.shelfItemId ?? null,
     }))
   )
-  if (itemsError) throw itemsError
+  // The stock trigger rejects the whole insert if someone else sold the last
+  // one between loading the form and submitting. The treatment row already
+  // exists by then, so void it rather than leave an empty ticket sitting in
+  // the queue — treatments are never deleted (see CLAUDE.md).
+  if (itemsError) {
+    await voidTreatment(treatment.id).catch(() => {})
+    if (itemsError.message?.includes('Stok tidak mencukupi')) {
+      throw new Error('Stok barang tidak mencukupi — muat ulang halaman')
+    }
+    throw itemsError
+  }
 
   if (!paymentMethod) {
     return treatment
@@ -156,15 +172,20 @@ export async function markSelesai(id) {
 }
 
 // Worker assignment — who's actually washing/QC'ing the vehicle, separate
-// from status. staffName is a plain-text snapshot (same convention as
-// treatments.pic), not a live FK — pass null to clear an assignment.
-export async function assignWashStaff(id, staffName) {
+// from status. Names are plain-text snapshots (same convention as
+// treatments.pic), not live FKs.
+//
+// Wash takes a list: a car is often washed by two or three people. They're
+// stored comma-separated in the one wash_staff column — see lib/staffNames.
+// Pass an empty array to clear the assignment.
+export async function assignWashStaff(id, staffNames) {
+  const value = formatStaffNames(staffNames)
   const { error } = await supabase
     .from('treatments')
-    .update({ wash_staff: staffName, updated_at: new Date().toISOString() })
+    .update({ wash_staff: value, updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
-  await logAction(id, staffName ? `wash staff assigned: ${staffName}` : 'wash staff unassigned')
+  await logAction(id, value ? `wash staff assigned: ${value}` : 'wash staff unassigned')
 }
 
 export async function assignQcStaff(id, staffName) {
@@ -194,34 +215,62 @@ export async function voidTreatment(id) {
   await logStatusChange(id, 'voided')
 }
 
+// The list views (queue, history) all need the same shape: paid-or-not plus a
+// readable summary of what was ordered, so they share one select and one
+// mapper.
+const LIST_SELECT = '*, payments(payment_method), treatment_items(service_name)'
+
+function mapTreatmentRow(t) {
+  return {
+    ...t,
+    isPaid: t.payments.length > 0,
+    serviceSummary: (t.treatment_items ?? []).map((item) => item.service_name).join(', '),
+  }
+}
+
 export async function getTodayTreatments() {
   const startOfDay = new Date()
   startOfDay.setHours(0, 0, 0, 0)
 
   const { data, error } = await supabase
     .from('treatments')
-    .select('*, payments(payment_method)')
+    .select(LIST_SELECT)
     .gte('created_at', startOfDay.toISOString())
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data.map((t) => ({ ...t, isPaid: t.payments.length > 0 }))
+  return data.map(mapTreatmentRow)
 }
 
 // end is exclusive — pass the start of the day/period after the one you want.
 export async function getTreatmentsInRange(start, end) {
   const { data, error } = await supabase
     .from('treatments')
-    .select('*, payments(payment_method)')
+    .select(LIST_SELECT)
     .gte('created_at', start.toISOString())
     .lt('created_at', end.toISOString())
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data.map((t) => ({ ...t, isPaid: t.payments.length > 0 }))
+  return data.map(mapTreatmentRow)
 }
 
+// The queue is work still to be done: new tickets plus jobs in progress. Once
+// a job reaches 'selesai' the work is over, so it drops off the queue the same
+// way 'closed' and 'voided' do — it lives on in Riwayat/Laporan.
+//
+// Deliberately NOT limited to today: a car left overnight, or a ticket nobody
+// closed before going home, is still outstanding work and has to stay visible
+// the next morning. What removes a treatment from the queue is its status, not
+// the calendar. Riwayat and Laporan remain the date-scoped views.
+const QUEUE_STATUSES = ['created', 'paid', 'diproses', 'qc']
+
 export async function getActiveQueue() {
-  const treatments = await getTodayTreatments()
-  return treatments.filter((t) => t.status !== 'closed' && t.status !== 'voided')
+  const { data, error } = await supabase
+    .from('treatments')
+    .select(LIST_SELECT)
+    .in('status', QUEUE_STATUSES)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data.map(mapTreatmentRow)
 }
 
 // Revenue is money actually collected, so this reads from payments
@@ -257,7 +306,7 @@ export async function getTodayPaymentBreakdown() {
 export async function searchTreatmentsByPlate(query, { todayOnly = false } = {}) {
   let request = supabase
     .from('treatments')
-    .select('*, payments(payment_method)')
+    .select(LIST_SELECT)
     .ilike('plate_number', `%${query.toUpperCase().trim()}%`)
     .order('created_at', { ascending: false })
 
@@ -269,7 +318,7 @@ export async function searchTreatmentsByPlate(query, { todayOnly = false } = {})
 
   const { data, error } = await request
   if (error) throw error
-  return data.map((t) => ({ ...t, isPaid: t.payments.length > 0 }))
+  return data.map(mapTreatmentRow)
 }
 
 // Ranks field workers by orders handled in a period, split into wash vs QC
@@ -287,10 +336,13 @@ export async function getWorkerOrderCounts(start, end) {
   if (error) throw error
 
   const counts = new Map()
-  function bump(name, field) {
-    if (!name) return
-    if (!counts.has(name)) counts.set(name, { name, washCount: 0, qcCount: 0 })
-    counts.get(name)[field] += 1
+  // A wash shared by several workers credits each of them one order — the
+  // column holds every assigned name, so parse before tallying.
+  function bump(value, field) {
+    for (const name of parseStaffNames(value)) {
+      if (!counts.has(name)) counts.set(name, { name, washCount: 0, qcCount: 0 })
+      counts.get(name)[field] += 1
+    }
   }
   for (const t of data) {
     bump(t.wash_staff, 'washCount')

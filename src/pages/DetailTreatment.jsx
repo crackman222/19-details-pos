@@ -16,7 +16,9 @@ import {
 import { PaymentMethodSelector } from '../components/PaymentMethodSelector'
 import { WashProofButton } from '../components/WashProofButton'
 import { StaffPicker } from '../components/StaffPicker'
+import { MultiStaffPicker } from '../components/MultiStaffPicker'
 import { formatRupiah, formatDateTime } from '../lib/format'
+import { parseStaffNames } from '../lib/staffNames'
 
 const STATUS_LABELS = {
   created: 'Dibuat',
@@ -79,10 +81,10 @@ export default function DetailTreatment() {
     }
   }
 
-  async function handleAssignWash(staffName) {
+  async function handleAssignWash(staffNames) {
     setBusy(true)
     try {
-      await assignWashStaff(id, staffName)
+      await assignWashStaff(id, staffNames)
       load()
     } catch {
       setError('Gagal menetapkan petugas cuci')
@@ -187,7 +189,7 @@ export default function DetailTreatment() {
         <div className="detail-card-header">
           <div>
             <div className="detail-card-code">{treatment.treatment_code}</div>
-            <div className="detail-card-plate">{treatment.plate_number}</div>
+            <div className="detail-card-plate">{treatment.plate_number || '-'}</div>
           </div>
           <div className="detail-card-badges">
             <span className={`status-badge status-${treatment.status}`}>
@@ -222,9 +224,13 @@ export default function DetailTreatment() {
           <span>Staf</span>
           <span>{treatment.pic}</span>
         </div>
-        <div className="struk-row">
+        <div className="struk-row struk-row-picker">
           <span>Petugas Cuci</span>
-          <StaffPicker value={treatment.wash_staff} onChange={handleAssignWash} disabled={busy || isFinal} />
+          <MultiStaffPicker
+            value={parseStaffNames(treatment.wash_staff)}
+            onChange={handleAssignWash}
+            disabled={busy || isFinal}
+          />
         </div>
         <div className="struk-row">
           <span>Petugas QC</span>

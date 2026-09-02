@@ -3,6 +3,7 @@ import { getLast7DaysRevenue, getTodayPaymentBreakdown, getWorkerOrderCounts } f
 import { formatRupiah, initials } from '../lib/format'
 import { getPeriodRange, formatPeriodLabel } from '../lib/dateRange'
 import { useAuth } from '../context/useAuth'
+import { isAdmin as checkIsAdmin } from '../lib/roles'
 
 const PAYMENT_LABELS = { cash: 'Tunai', qris: 'QRIS', transfer: 'Transfer' }
 const PAYMENT_COLORS = { cash: '#2c6a9e', qris: '#7bb2d9', transfer: '#dce9f3' }
@@ -21,7 +22,7 @@ function dayLabel(date) {
 
 export default function Laporan() {
   const { profile } = useAuth()
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = checkIsAdmin(profile)
   const [last7, setLast7] = useState([])
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
