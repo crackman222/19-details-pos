@@ -4,14 +4,15 @@ import { logout } from '../api'
 import { initials } from '../lib/format'
 import { useAuth } from '../context/useAuth'
 import { useTheme } from '../context/useTheme'
-import { isAdmin, isSupervisor, ROLE_LABELS } from '../lib/roles'
+import { isAdmin, isStaff, isSupervisor, ROLE_LABELS } from '../lib/roles'
+import { WorkerShell } from './WorkerShell'
 
 // `access` mirrors the route guards in App.jsx — keep the two in step, since
 // this only decides what's shown and the guards decide what's reachable.
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', end: true, access: 'all' },
   { to: '/transaksi-baru', label: 'Transaksi Baru', end: false, access: 'all' },
-  { to: '/katalog', label: 'Katalog Layanan', end: false, access: 'all' },
+  { to: '/katalog', label: 'Katalog Layanan', end: false, access: 'supervisor' },
   { to: '/riwayat', label: 'Riwayat Transaksi', end: false, access: 'supervisor' },
   { to: '/laporan', label: 'Laporan', end: false, access: 'supervisor' },
   { to: '/staf', label: 'Kelola Staf', end: false, access: 'admin' },
@@ -31,6 +32,12 @@ export function AppShell() {
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [navOpen, setNavOpen] = useState(false)
+
+  // Workers are on a phone, so they get a different shell entirely — bottom
+  // tabs instead of a sidebar. Same routes underneath: this swaps the chrome
+  // around <Outlet/>, it is not a second route table. Placed after the hooks
+  // above so the hook order stays identical either way.
+  if (isStaff(profile)) return <WorkerShell />
 
   function canSee(item) {
     if (item.access === 'admin') return isAdmin(profile)

@@ -42,6 +42,20 @@
      without a separate override per opacity value. */
   --pos-ink: 0, 0, 0;
 
+  /* Worker UI (phone) — from `design/Worker View Standalone.html`. The chunky
+     buttons there are a solid face over a 3px hard shadow, so each one needs a
+     DARKER companion colour, not a lighter one. --pos-blue-dark can't serve:
+     it inverts to a light tint in dark mode (that's the point of it), which
+     would light the button from below. Hence the separate *-press pair, which
+     stays darker than its face in both themes. */
+  --pos-blue-press: #1f4e73;
+  --pos-green-solid: #2f7d52;
+  --pos-green-press: #235e3e;
+  --pos-green-soft: #e3f3e8;
+  --pos-green-soft-text: #235e3e;
+  /* Left accent stripe for a ticket nobody has picked up yet. */
+  --pos-wait: #c3c9d1;
+
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
   color-scheme: light dark;
@@ -102,6 +116,12 @@
   --pos-red-bg: #3a1f1f;
   --pos-red-text: #f0a3a3;
   --pos-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --pos-blue-press: #24506f;
+  --pos-green-solid: #35855a;
+  --pos-green-press: #1d4c33;
+  --pos-green-soft: #1b3527;
+  --pos-green-soft-text: #86dda8;
+  --pos-wait: #474d57;
   color-scheme: dark;
 }
 

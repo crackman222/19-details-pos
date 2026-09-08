@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getActiveQueue, getWashProofMap } from '../api'
-import { formatRupiah, formatDateTime } from '../lib/format'
+import { getActiveQueue, getWashProofMap, startProcessing, sendToQC, markSelesai } from '../api'
+import { formatRupiah, formatDateTime, ticketLabel } from '../lib/format'
 import { WashProofButton } from '../components/WashProofButton'
+import { QueueCard } from '../components/QueueCard'
+import { useAuth } from '../context/useAuth'
+import { isStaff } from '../lib/roles'
 import { TASK_REMINDER_DAYS, daysOpen, isOverdue } from '../lib/taskReminder'
 
 // Only the statuses that can appear in the queue — 'selesai' and later drop
@@ -14,23 +17,58 @@ const STATUS_LABELS = {
   qc: 'QC',
 }
 
+// Advancing a ticket from the queue card. Same three calls DetailTreatment
+// makes, keyed by the action name QueueCard hands back.
+const ADVANCE = {
+  start: startProcessing,
+  qc: sendToQC,
+  done: markSelesai,
+}
+
 export default function Antrian() {
   const navigate = useNavigate()
+  const { profile } = useAuth()
+  // Workers are on a phone: the queue reads as cards, and the money figure
+  // stays on the desk view. 'Belum Dibayar' does not — a worker has to know
+  // not to release a vehicle that hasn't paid.
+  const workerView = isStaff(profile)
   const [queue, setQueue] = useState([])
   const [photoMap, setPhotoMap] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [filter, setFilter] = useState('all')
+  const [busyId, setBusyId] = useState(null)
+
+  const loadQueue = useCallback(
+    () =>
+      getActiveQueue()
+        .then((data) => {
+          setQueue(data)
+          return getWashProofMap(data.map((t) => t.id))
+        })
+        .then((map) => map && setPhotoMap(map))
+        .catch(() => setError('Gagal memuat antrian')),
+    []
+  )
 
   useEffect(() => {
-    getActiveQueue()
-      .then((data) => {
-        setQueue(data)
-        return getWashProofMap(data.map((t) => t.id))
-      })
-      .then((map) => map && setPhotoMap(map))
-      .catch(() => setError('Gagal memuat antrian'))
-      .finally(() => setLoading(false))
-  }, [])
+    loadQueue().finally(() => setLoading(false))
+  }, [loadQueue])
+
+  // Refetch rather than patch the row in place: 'selesai' drops a ticket out
+  // of the queue entirely (see QUEUE_STATUSES), so the list itself changes.
+  async function handleAdvance(id, action) {
+    setBusyId(id)
+    setError('')
+    try {
+      await ADVANCE[action](id)
+      await loadQueue()
+    } catch {
+      setError('Gagal memperbarui status transaksi')
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   function markPhotoUploaded(treatmentId) {
     setPhotoMap((map) => ({ ...map, [treatmentId]: true }))
@@ -54,6 +92,22 @@ export default function Antrian() {
 
   const overdueTreatments = useMemo(() => queue.filter((t) => isOverdue(t.created_at)), [queue])
 
+  // The worker view's filter chips. Each one is a stat card that also filters,
+  // which is what the counts were really for — the desk view keeps the plain
+  // cards. Statuses match the byStatus() groupings above.
+  const FILTERS = [
+    { key: 'all', label: 'Semua', count: stats.count },
+    { key: 'belum', label: 'Belum Diproses', count: stats.belumDiproses },
+    { key: 'diproses', label: 'Diproses', count: stats.diproses },
+    { key: 'qc', label: 'QC', count: stats.qc },
+  ]
+
+  const visibleQueue = useMemo(() => {
+    if (filter === 'belum') return queue.filter((t) => t.status === 'created' || t.status === 'paid')
+    if (filter === 'all') return queue
+    return queue.filter((t) => t.status === filter)
+  }, [queue, filter])
+
   return (
     <div className="antrian-screen">
       <div className="riwayat-header">
@@ -63,6 +117,25 @@ export default function Antrian() {
         </Link>
       </div>
 
+      {workerView && (
+        <div className="worker-filters">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              className={`worker-chip ${filter === f.key ? 'active' : ''}`}
+              onClick={() => setFilter(f.key)}
+              aria-pressed={filter === f.key}
+            >
+              {f.label}
+              <span className="worker-chip-count">({f.count})</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!workerView && (
+        <>
       <div className="stat-cards">
         <div className="stat-card">
           <span className="stat-card-label">Dalam Antrian</span>
@@ -98,6 +171,8 @@ export default function Antrian() {
           <span className="stat-card-value">{stats.qc}</span>
         </div>
       </div>
+        </>
+      )}
 
       {!loading && overdueTreatments.length > 0 && (
         <div className="overdue-alert" role="alert">
@@ -109,7 +184,7 @@ export default function Antrian() {
               <span key={t.id}>
                 {i > 0 && ', '}
                 <Link to={`/treatment/${t.id}`} className="overdue-alert-link">
-                  {t.plate_number || t.treatment_code}
+                  {ticketLabel(t)}
                 </Link>
               </span>
             ))}
@@ -120,7 +195,31 @@ export default function Antrian() {
       {error && <p className="form-error">{error}</p>}
       {loading && <p className="riwayat-loading">Memuat...</p>}
 
-      {!loading && queue.length > 0 && (
+      {!loading && workerView && visibleQueue.length > 0 && (
+        <div className="queue-cards">
+          {visibleQueue.map((t) => (
+            <QueueCard
+              key={t.id}
+              treatment={t}
+              statusLabel={STATUS_LABELS[t.status] || t.status}
+              hasPhoto={Boolean(photoMap[t.id])}
+              busy={busyId === t.id}
+              onUploaded={markPhotoUploaded}
+              onAdvance={handleAdvance}
+            />
+          ))}
+        </div>
+      )}
+
+      {!loading && workerView && visibleQueue.length === 0 && !error && (
+        <p className="riwayat-empty">
+          {queue.length === 0
+            ? 'Tidak ada antrian aktif — semua transaksi sudah selesai'
+            : 'Tidak ada transaksi di daftar ini'}
+        </p>
+      )}
+
+      {!loading && queue.length > 0 && !workerView && (
         <div className="riwayat-table antrian-table">
           <div className="riwayat-table-row riwayat-table-head">
             <span>Layanan</span>
@@ -171,7 +270,7 @@ export default function Antrian() {
           })}
         </div>
       )}
-      {!loading && queue.length === 0 && !error && (
+      {!loading && !workerView && queue.length === 0 && !error && (
         <p className="riwayat-empty">Tidak ada antrian aktif — semua transaksi sudah selesai</p>
       )}
     </div>
