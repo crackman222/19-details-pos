@@ -28,7 +28,6 @@ function App() {
               <Route element={<AppShell />}>
                 <Route path="/" element={<Antrian />} />
                 <Route path="/transaksi-baru" element={<TransaksiBaru />} />
-                <Route path="/katalog" element={<Katalog />} />
                 {/* Treatment detail and the receipt stay open to staff — they
                     are where a ticket is actually worked (assigning workers,
                     the wash photo, taking payment), and Transaksi Baru lands
@@ -36,6 +35,7 @@ function App() {
                 <Route path="/treatment/:id" element={<DetailTreatment />} />
                 <Route path="/struk/:id" element={<Struk />} />
                 <Route element={<SupervisorRoute />}>
+                  <Route path="/katalog" element={<Katalog />} />
                   <Route path="/riwayat" element={<RiwayatTransaksi />} />
                   <Route path="/laporan" element={<Laporan />} />
                 </Route>

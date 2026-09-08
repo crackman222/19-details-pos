@@ -27,3 +27,11 @@ export function isSupervisor(profile) {
 export function isAdmin(profile) {
   return profile?.role === ROLES.ADMIN
 }
+
+// The people on the shop floor, as opposed to the office. Deliberately NOT
+// `!isSupervisor(profile)` — a null/loading profile is nobody, not a worker,
+// and answering "true" there would flash the phone shell at a supervisor
+// before their profile resolves.
+export function isStaff(profile) {
+  return profile?.role === ROLES.STAFF
+}

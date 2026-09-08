@@ -5,10 +5,15 @@ import { ServicePicker } from '../components/ServicePicker'
 import { ShelfItemPicker } from '../components/ShelfItemPicker'
 import { formatRupiah } from '../lib/format'
 import { useAuth } from '../context/useAuth'
+import { isStaff } from '../lib/roles'
 
 export default function TransaksiBaru() {
   const { profile } = useAuth()
   const navigate = useNavigate()
+  // On a phone the ticket panel sits below a long catalog, so the submit
+  // button scrolls away. Workers get a fixed bar with the running total
+  // instead; the in-panel button is hidden for them in CSS.
+  const workerView = isStaff(profile)
 
   const [services, setServices] = useState([])
   const [shelfItems, setShelfItems] = useState([])
@@ -91,6 +96,12 @@ export default function TransaksiBaru() {
 
   const subtotal = useMemo(
     () => selectedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
+    [selectedItems]
+  )
+  // Units on the ticket, not distinct lines — two of the same shelf item is
+  // "2 item" on the worker action bar, matching what the quantity steppers say.
+  const lineCount = useMemo(
+    () => selectedItems.reduce((sum, item) => sum + item.quantity, 0),
     [selectedItems]
   )
   // Services carry their own requires_vehicle flag (migration 006), so a
@@ -318,6 +329,26 @@ export default function TransaksiBaru() {
           {submitting ? 'Menyimpan...' : 'Simpan ke Antrian'}
         </button>
       </aside>
+
+      {workerView && (
+        <div className="worker-actionbar">
+          <div className="worker-actionbar-summary">
+            <span className="worker-actionbar-count">
+              {lineCount} item{lineCount === 0 ? ' dipilih' : ''}
+            </span>
+            <span className="worker-actionbar-total">{formatRupiah(total)}</span>
+          </div>
+          {/* Inside the same <form>, so this submits it exactly like the
+              button above — no duplicated handler. */}
+          <button
+            type="submit"
+            className="worker-actionbar-submit"
+            disabled={submitting || selectedItems.length === 0}
+          >
+            {submitting ? 'Menyimpan...' : 'Simpan'}
+          </button>
+        </div>
+      )}
     </form>
   )
 }

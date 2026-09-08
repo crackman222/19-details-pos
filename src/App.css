@@ -2405,3 +2405,693 @@
 .theme-toggle-btn:hover {
   border-color: rgba(var(--pos-ink), 0.2);
 }
+
+/* =========================================================================
+   Worker UI — the phone treatment for role='staff'
+   -------------------------------------------------------------------------
+   Visual language comes from `design/Worker View Standalone.html`: a left
+   accent stripe per card, large plate type, uppercase status pills, and the
+   chunky 64px action buttons (solid face over a 3px hard shadow) that are the
+   whole point of the design — they are meant to be hit with a thumb, wet
+   hands, in daylight.
+
+   That mockup is a 1280px English/USD demo built around bays, techs and ETAs,
+   none of which exist in this schema. Taken from it: the styling. Not taken:
+   its layout (it is a wide desktop row; this is a phone column) or its
+   concepts. Its hardcoded hex values are mapped onto the --pos-* tokens so
+   dark mode keeps working — see the *-press pair in index.css.
+
+   WorkerShell puts `.worker-ui` on its root, which is the namespace for
+   everything here. Rules are unconditional rather than wrapped in a media
+   query: reaching them at all means a worker is signed in, and a worker is on
+   a phone. That also keeps them clear of the desktop-first breakpoints above.
+   ========================================================================= */
+
+.worker-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100svh;
+  width: 100%;
+  background: var(--pos-bg);
+  overflow: hidden;
+  font-family: var(--pos-font);
+  color: var(--pos-text);
+}
+
+/* ---- topbar ---- */
+
+.worker-topbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 64px;
+  padding: 0 16px;
+  padding-top: env(safe-area-inset-top);
+  box-sizing: content-box;
+  background: var(--pos-surface);
+  border-bottom: 1px solid var(--pos-border);
+}
+
+.worker-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.worker-topbar-title {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: var(--pos-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.worker-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+/* 44px circle, straight from the mockup — also the minimum touch target, so
+   it doubles as the logout control rather than sitting next to one. */
+.worker-avatar {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--pos-blue-light);
+  color: var(--pos-blue-dark);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.worker-topbar .theme-toggle-btn {
+  min-height: 40px;
+}
+
+/* ---- content ---- */
+
+.worker-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px;
+  /* Clear the fixed tab bar, and the action bar that sits on top of it, so
+     the last card is never trapped underneath. */
+  padding-bottom: calc(160px + env(safe-area-inset-bottom));
+  min-width: 0;
+}
+
+/* ---- bottom tab bar ---- */
+
+.worker-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--pos-surface);
+  border-top: 1px solid var(--pos-border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.worker-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 58px;
+  text-decoration: none;
+  color: var(--pos-text-faint);
+  font-weight: 700;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.worker-tab.active {
+  color: var(--pos-blue);
+}
+
+.worker-tab-icon {
+  width: 23px;
+  height: 23px;
+}
+
+.worker-tab-label {
+  font-size: 11.5px;
+  letter-spacing: 0.2px;
+}
+
+/* =========================================================================
+   Worker UI — chunky buttons
+   The signature control from the mockup: a solid face sitting on a 3px hard
+   shadow, which collapses on press so the button physically travels down.
+   ========================================================================= */
+
+.worker-btn {
+  flex: 1;
+  min-width: 0;
+  height: 64px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.worker-btn-blue {
+  background: var(--pos-blue);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--pos-blue-press);
+}
+
+.worker-btn-green {
+  background: var(--pos-green-solid);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--pos-green-press);
+}
+
+/* Travel the full 3px down and drop the shadow, so the press reads as the
+   button being pushed into the card rather than as a colour change. */
+.worker-btn-blue:active:not(:disabled),
+.worker-btn-green:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+.worker-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* A step that exists but is gated (Kirim ke QC with no wash photo yet). Not
+   the green face at reduced opacity: that still reads as "press me". Dashed
+   and neutral instead, pointing at the camera strip below it. */
+.worker-btn-blocked {
+  background: var(--pos-gray-bg);
+  color: var(--pos-gray-text);
+  border: 2px dashed rgba(var(--pos-ink), 0.22);
+  font-size: 15px;
+}
+
+.worker-btn-blocked:disabled {
+  opacity: 1;
+}
+
+/* The square secondary — the mockup's "i". Outline, no lift. */
+.worker-btn-ghost {
+  flex: none;
+  width: 64px;
+  padding: 0;
+  background: transparent;
+  border: 2px solid rgba(var(--pos-ink), 0.15);
+  color: var(--pos-text-muted);
+  font-size: 21px;
+}
+
+.worker-btn-ghost:active {
+  background: var(--pos-surface-2);
+}
+
+/* Not a button — the state a ticket rests in when there is nothing to press.
+   Mockup's "Ready for Pickup" chip. */
+.worker-btn-static {
+  flex: 1;
+  min-width: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  background: var(--pos-green-soft);
+  color: var(--pos-green-soft-text);
+  border: 2px solid var(--pos-green-solid);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  padding: 0 14px;
+}
+
+/* =========================================================================
+   Worker UI — filter chips
+   Replaces the two rows of stat cards. Same numbers, but each one is now a
+   filter, which is what the counts were really for.
+   ========================================================================= */
+
+.worker-filters {
+  display: flex;
+  gap: 9px;
+  margin-bottom: 14px;
+  /* Four chips will not fit across a phone; scroll them instead of wrapping
+     to a second row that pushes the queue below the fold. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Bleed to the screen edges so the row reads as scrollable, while the first
+     and last chip still line up with the cards below. */
+  margin-left: -14px;
+  margin-right: -14px;
+  padding: 2px 14px;
+}
+
+.worker-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.worker-chip {
+  flex: none;
+  height: 52px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--pos-ink), 0.12);
+  background: var(--pos-surface);
+  color: var(--pos-text-muted);
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The mockup's active chip is near-black on white. --pos-text is #16181c in
+   light and #f1f2f4 in dark, so pairing it with --pos-surface inverts the
+   chip correctly in both themes instead of going black-on-black. */
+.worker-chip.active {
+  background: var(--pos-text);
+  border-color: var(--pos-text);
+  color: var(--pos-surface);
+}
+
+.worker-chip-count {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+/* =========================================================================
+   Worker UI — queue cards
+   ========================================================================= */
+
+.queue-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.queue-card {
+  background: var(--pos-surface);
+  border: 1px solid rgba(var(--pos-ink), 0.1);
+  /* The 8px stripe that tells you a card's state before you read it. */
+  border-left: 8px solid var(--pos-wait);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.queue-card-diproses {
+  border-left-color: var(--pos-blue);
+}
+
+.queue-card-qc {
+  border-left-color: var(--pos-green-solid);
+}
+
+.queue-card.overdue {
+  border-color: var(--pos-red-text);
+  border-left-color: var(--pos-red-text);
+}
+
+.queue-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 16px 16px 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.queue-card-main:active {
+  background: var(--pos-surface-2);
+}
+
+.queue-card-main:focus-visible {
+  outline: 2px solid var(--pos-blue);
+  outline-offset: -2px;
+}
+
+.queue-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.queue-card-plate {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.3px;
+  color: var(--pos-text);
+}
+
+/* A name in the heading slot shouldn't wear the plate's wide tracking. */
+.queue-card-plate-name {
+  letter-spacing: -0.2px;
+}
+
+/* Treatment code, plus the customer when the heading is a plate rather than
+   their name. Quiet — it's a reference, not something you scan the list by. */
+.queue-card-ref {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 7px;
+  margin-top: -4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pos-text-faint);
+}
+
+.queue-card-ref > span + span::before {
+  content: '\00b7';
+  margin-right: 7px;
+}
+
+.queue-card-service {
+  font-size: 15.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(var(--pos-ink), 0.7);
+}
+
+/* Brand, staff and time on one wrapping line separated by dots rather than
+   labels — there is no room for a label column on a handset. */
+.queue-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(var(--pos-ink), 0.5);
+}
+
+.queue-card-meta > span + span::before {
+  content: '\00b7';
+  margin-right: 7px;
+}
+
+.queue-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.queue-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+/* The wash-proof control lives in its own strip: WashProofButton wraps a file
+   input, and putting it inside .queue-card-main would mean a stray navigation
+   mid-capture drops the photo. */
+.queue-card-proof {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border-top: 1px solid rgba(var(--pos-ink), 0.07);
+  background: var(--pos-surface-2);
+}
+
+.queue-card-proof-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pos-text-faint);
+}
+
+/* Dashed empty state, straight from the mockup. */
+.worker-ui .riwayat-empty {
+  background: var(--pos-surface);
+  border: 1px dashed rgba(var(--pos-ink), 0.18);
+  border-radius: 12px;
+  padding: 44px 24px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(var(--pos-ink), 0.45);
+}
+
+.worker-ui .riwayat-loading {
+  text-align: center;
+  padding: 34px 12px;
+  font-weight: 600;
+}
+
+/* =========================================================================
+   Worker UI — shared page overrides
+   ========================================================================= */
+
+/* Status pills go uppercase and gain weight, per the mockup. The colour of
+   each status is inherited from the shared .status-* rules above. Uppercase
+   plus letter-spacing makes them noticeably wider, so they have to be told
+   not to break — 'Belum Dibayar' otherwise wraps to two lines inside its
+   own pill. */
+.worker-ui .status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+
+/* Detail Treatment's header: on a phone the code, plate and badge row need
+   to stack rather than share a line, and a treatment code is a single token
+   that must not be broken across lines. */
+.worker-ui .detail-card-header {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.worker-ui .detail-card-code {
+  white-space: nowrap;
+}
+
+.worker-ui .detail-card-badges {
+  flex-wrap: wrap;
+}
+
+/* The 56px h1 from index.css is a desktop hero size. */
+.worker-ui h1 {
+  font-size: 22px;
+  letter-spacing: -0.3px;
+  margin: 0 0 4px;
+}
+
+.worker-ui h2 {
+  font-size: 16px;
+}
+
+/* iOS zooms the viewport on focus for any field under 16px. Every desk input
+   here is 13-13.5px, so they all need lifting. */
+.worker-ui input,
+.worker-ui select,
+.worker-ui textarea {
+  font-size: 16px;
+}
+
+/* Real minimum touch targets on anything tappable that isn't already sized. */
+.worker-ui button,
+.worker-ui .btn-primary,
+.worker-ui .btn-secondary,
+.worker-ui .btn-danger {
+  min-height: 44px;
+}
+
+/* The topbar's own controls are deliberately compact and exempt. */
+.worker-topbar button {
+  min-height: 40px;
+}
+
+/* Antrian's own h1 + "Transaksi Baru" link are redundant here: the page title
+   is in the topbar and the destination is a tab. */
+.worker-ui .riwayat-header {
+  display: none;
+}
+
+.worker-ui .overdue-alert {
+  font-size: 13px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+/* ---- Transaksi Baru ---- */
+
+.worker-ui .transaksi-baru-screen {
+  flex-direction: column;
+  gap: 16px;
+}
+
+.worker-ui .transaksi-catalog-header {
+  display: none;
+}
+
+/* Two service cards across is the sweet spot on a handset: the desk grid is
+   3, and the existing 480px override drops to 1, which costs a lot of
+   scrolling on a menu this long. */
+.worker-ui .service-picker-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.worker-ui .service-card {
+  padding: 14px 12px;
+  min-height: 84px;
+  border-radius: 12px;
+}
+
+.worker-ui .service-card-name {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.worker-ui .ticket-panel {
+  width: 100%;
+  position: static;
+  max-height: none;
+  padding: 16px 14px;
+  border-radius: 12px;
+}
+
+/* The action bar carries the total and the submit, so the panel's own button
+   would just be a second control saying the same thing. */
+.worker-ui .ticket-submit {
+  display: none;
+}
+
+/* ---- fixed action bar (sits directly above the tab bar) ---- */
+
+.worker-actionbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(58px + env(safe-area-inset-bottom));
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--pos-surface);
+  border-top: 1px solid var(--pos-border);
+  box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.worker-actionbar-summary {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.worker-actionbar-count {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--pos-text-faint);
+}
+
+.worker-actionbar-total {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--pos-text);
+}
+
+/* Same chunky treatment as the queue actions, sized for the bar. */
+.worker-actionbar-submit {
+  flex: none;
+  min-width: 132px;
+  height: 56px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 12px;
+  background: var(--pos-blue);
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--pos-blue-press);
+}
+
+.worker-actionbar-submit:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+.worker-actionbar-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---- Detail Treatment / Struk ----
+   Reached by tapping a ticket rather than from a tab, but this is where a
+   worker finishes a job, so the desk-width action rows have to collapse and
+   the primary actions get the same weight as the queue's. */
+
+.worker-ui .detail-actions,
+.worker-ui .struk-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.worker-ui .detail-actions button,
+.worker-ui .struk-actions button,
+.worker-ui .struk-actions a {
+  width: 100%;
+}
+
+.worker-ui .detail-actions .btn-primary {
+  height: 60px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 3px 0 var(--pos-blue-press);
+}
+
+.worker-ui .detail-actions .btn-primary:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: none;
+}
