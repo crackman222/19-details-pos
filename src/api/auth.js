@@ -19,9 +19,16 @@ export async function getActiveProfiles() {
   return data
 }
 
-export async function login(username, pin) {
+// captchaToken is undefined whenever Turnstile isn't configured (see
+// src/lib/turnstile.js) — omitted entirely rather than sent as undefined, so
+// this keeps working unchanged in any environment without CAPTCHA set up.
+export async function login(username, pin, captchaToken) {
   const email = buildLoginEmail(username)
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password: pin })
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: pin,
+    ...(captchaToken ? { options: { captchaToken } } : {}),
+  })
   if (error) throw error
 
   // Deactivated workers keep a valid Auth login until someone changes their

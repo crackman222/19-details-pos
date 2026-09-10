@@ -681,6 +681,13 @@
   font-size: 14px;
 }
 
+/* Empty and full-width when Cloudflare passes a login through silently
+   (the normal case); only takes visible space if it renders a challenge. */
+.login-captcha:not(:empty) {
+  display: flex;
+  justify-content: center;
+}
+
 .name-picker-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1544,7 +1551,8 @@
   color: var(--pos-text-faint);
 }
 
-.service-card:disabled {
+.service-card:disabled,
+.service-card.sold-out {
   opacity: 0.5;
   cursor: not-allowed;
 }
