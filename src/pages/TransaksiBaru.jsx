@@ -44,11 +44,16 @@ export default function TransaksiBaru() {
   // composite key rather than a service id — the two id spaces are separate
   // and would otherwise collide.
   function addLine(line) {
+    const existing = selectedItems.find((item) => item.key === line.key)
+    // maxQuantity is the stock on hand for goods, undefined for services —
+    // this branch never applies to a service line.
+    if (existing?.maxQuantity != null && existing.quantity >= existing.maxQuantity) {
+      setError('Stok barang ini sudah habis, tidak bisa menambah lagi')
+      return
+    }
+    setError('')
     setSelectedItems((items) => {
-      const existing = items.find((item) => item.key === line.key)
       if (!existing) return [...items, { ...line, quantity: 1 }]
-      // maxQuantity is the stock on hand for goods, undefined for services.
-      if (existing.maxQuantity != null && existing.quantity >= existing.maxQuantity) return items
       return items.map((item) =>
         item.key === line.key ? { ...item, quantity: item.quantity + 1 } : item
       )
@@ -65,7 +70,13 @@ export default function TransaksiBaru() {
     })
   }
 
-  function addShelfItem(item) {
+  // soldOut comes straight from the picker's own stock check, so an item that
+  // ran out is rejected here before it ever reaches addLine.
+  function addShelfItem(item, soldOut) {
+    if (soldOut) {
+      setError('Stok barang ini sudah habis, tidak bisa menambah lagi')
+      return
+    }
     addLine({
       key: `shelf-${item.id}`,
       shelfItemId: item.id,

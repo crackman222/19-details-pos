@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login } from '../api'
 import { useAuth } from '../context/useAuth'
+import { useTurnstile } from '../lib/turnstile'
 
 // Username + PIN, both typed. The old name-picker listed every active person
 // before anyone had signed in, which both advertised the roster publicly and
@@ -13,6 +14,8 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false)
   const navigate = useNavigate()
   const { setProfile } = useAuth()
+  const captchaRef = useRef(null)
+  const getCaptchaToken = useTurnstile(captchaRef)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -29,18 +32,24 @@ export default function Login() {
 
     setSubmitting(true)
     try {
-      const profile = await login(username, pin)
+      const captchaToken = await getCaptchaToken()
+      const profile = await login(username, pin, captchaToken)
       setProfile(profile)
       navigate('/')
     } catch (err) {
       // Deliberately one message for both a wrong username and a wrong PIN —
       // a distinct "user not found" would let anyone probe for valid handles.
       // The deactivated-account case is worth naming, though: that person
-      // needs to talk to an admin, not keep retrying.
+      // needs to talk to an admin, not keep retrying. A Turnstile failure is
+      // its own thing too — that's not a bad credential, it's the security
+      // check itself failing, and lumping it in as "PIN salah" would send a
+      // worker into retyping their PIN for no reason.
       setError(
         err.message === 'Akun tidak aktif'
           ? 'Akun tidak aktif — hubungi admin'
-          : 'Username atau PIN salah'
+          : err.message?.startsWith('Verifikasi keamanan')
+            ? err.message
+            : 'Username atau PIN salah'
       )
     } finally {
       setSubmitting(false)
@@ -81,6 +90,10 @@ export default function Login() {
               disabled={submitting}
             />
           </label>
+
+          {/* Invisible unless Cloudflare's risk engine decides this login
+              needs an interactive challenge — see src/lib/turnstile.js. */}
+          <div ref={captchaRef} className="login-captcha" />
 
           {error && <p className="form-error">{error}</p>}
 
