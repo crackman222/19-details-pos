@@ -10,6 +10,25 @@ function generateTreatmentCode() {
   return `ND${y}${m}${d}-${rand}`
 }
 
+// The 4-digit random suffix is only ~9000-wide per day, so two tickets on a
+// busy day can land on the same code — treatment_code is UNIQUE, so that
+// insert fails. That's a collision, not a real error, so retry with a fresh
+// code instead of surfacing a raw DB error at the counter.
+const MAX_CODE_ATTEMPTS = 5
+
+async function insertTreatment(fields) {
+  for (let attempt = 1; attempt <= MAX_CODE_ATTEMPTS; attempt++) {
+    const { data, error } = await supabase
+      .from('treatments')
+      .insert({ ...fields, treatment_code: generateTreatmentCode() })
+      .select()
+      .single()
+    if (!error) return data
+    const isCodeCollision = error.code === '23505' && error.message?.includes('treatment_code')
+    if (!isCodeCollision || attempt === MAX_CODE_ATTEMPTS) throw error
+  }
+}
+
 async function logAction(treatmentId, action) {
   const { error } = await supabase.from('treatment_logs').insert({ treatment_id: treatmentId, action })
   if (error) throw error
@@ -37,26 +56,20 @@ export async function createTreatment({
   const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
   const total = Math.max(subtotal - discount, 0)
 
-  const { data: treatment, error: treatmentError } = await supabase
-    .from('treatments')
-    .insert({
-      treatment_code: generateTreatmentCode(),
-      customer_name: customerName,
-      customer_phone: customerPhone,
-      // Null for services with no vehicle involved (e.g. Cuci Helm) — the
-      // column is nullable as of migration 006.
-      plate_number: plateNumber ? plateNumber.toUpperCase().trim() : null,
-      treatment_type: treatmentType,
-      pic,
-      status: 'created',
-      notes,
-      subtotal,
-      discount,
-      total,
-    })
-    .select()
-    .single()
-  if (treatmentError) throw treatmentError
+  const treatment = await insertTreatment({
+    customer_name: customerName,
+    customer_phone: customerPhone,
+    // Null for services with no vehicle involved (e.g. Cuci Helm) — the
+    // column is nullable as of migration 006.
+    plate_number: plateNumber ? plateNumber.toUpperCase().trim() : null,
+    treatment_type: treatmentType,
+    pic,
+    status: 'created',
+    notes,
+    subtotal,
+    discount,
+    total,
+  })
 
   await logStatusChange(treatment.id, 'created')
 

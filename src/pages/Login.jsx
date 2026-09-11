@@ -4,6 +4,8 @@ import { login } from '../api'
 import { useAuth } from '../context/useAuth'
 import { useTurnstile } from '../lib/turnstile'
 
+const IDLE_LOGOUT_FLAG = 'nd_idle_logout'
+
 // Username + PIN, both typed. The old name-picker listed every active person
 // before anyone had signed in, which both advertised the roster publicly and
 // invited tapping the wrong name; you now have to know your own handle.
@@ -11,6 +13,15 @@ export default function Login() {
   const [username, setUsername] = useState('')
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
+  const [info, setInfo] = useState(() => {
+    // Set by AuthContext's idle/away timeout right before it signs out, so
+    // this only fires immediately after that redirect, not on every visit.
+    if (sessionStorage.getItem(IDLE_LOGOUT_FLAG)) {
+      sessionStorage.removeItem(IDLE_LOGOUT_FLAG)
+      return 'Sesi berakhir karena tidak ada aktivitas, silakan masuk kembali'
+    }
+    return ''
+  })
   const [submitting, setSubmitting] = useState(false)
   const navigate = useNavigate()
   const { setProfile } = useAuth()
@@ -20,6 +31,7 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setInfo('')
 
     if (!username.trim()) {
       setError('Username wajib diisi')
@@ -95,6 +107,7 @@ export default function Login() {
               needs an interactive challenge — see src/lib/turnstile.js. */}
           <div ref={captchaRef} className="login-captcha" />
 
+          {info && !error && <p className="form-info">{info}</p>}
           {error && <p className="form-error">{error}</p>}
 
           <button type="submit" className="btn-primary login-submit" disabled={submitting}>
