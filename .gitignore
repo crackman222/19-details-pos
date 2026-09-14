@@ -28,7 +28,6 @@ dist-ssr
 .env.*.local
 .env.development
 .env.production
-env.txt
 .mcp.json
 
 # Claude Code local settings (may contain machine-specific config)
