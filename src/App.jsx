@@ -15,6 +15,7 @@ import RiwayatTransaksi from './pages/RiwayatTransaksi'
 import Laporan from './pages/Laporan'
 import DetailTreatment from './pages/DetailTreatment'
 import KelolaStaf from './pages/KelolaStaf'
+import KelolaUpah from './pages/KelolaUpah'
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
                   <Route path="/katalog" element={<Katalog />} />
                   <Route path="/riwayat" element={<RiwayatTransaksi />} />
                   <Route path="/laporan" element={<Laporan />} />
+                  <Route path="/upah" element={<KelolaUpah />} />
                 </Route>
                 <Route element={<AdminRoute />}>
                   <Route path="/staf" element={<KelolaStaf />} />

@@ -38,6 +38,27 @@ export function getPeriodRange(period) {
   throw new Error(`Unknown period: ${period}`)
 }
 
+// A single calendar day as a [start, end) range, from a "YYYY-MM-DD" value
+// like a <input type="date"> gives you — used by the wage management page's
+// day picker. Parsed as local time (not UTC) so the boundary lands on
+// midnight where the shop actually is.
+export function getDayRange(dateStr) {
+  const start = new Date(`${dateStr}T00:00:00`)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+  return { start, end }
+}
+
+// Today as a "YYYY-MM-DD" string, for defaulting a date input — toISOString
+// is UTC, which drifts a day off around midnight in Indonesia (UTC+7/+8/+9).
+export function todayDateInput() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 export function formatPeriodLabel(period) {
   const { start, end } = getPeriodRange(period)
 
