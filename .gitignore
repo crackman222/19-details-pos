@@ -38,3 +38,5 @@ dist-ssr
 
 # Vercel
 .vercel\
+
+CLAUDE.md

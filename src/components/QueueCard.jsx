@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
-import { WashProofButton } from './WashProofButton'
+import { useWashProofUpload } from './useWashProofUpload'
+import { hasRequiredStaff } from '../api'
 import { formatDateTime, ticketLabel } from '../lib/format'
 import { daysOpen, isOverdue } from '../lib/taskReminder'
 
@@ -28,9 +29,16 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
 
   const step = ACTIONS[treatment.status]
   // sendToQC is refused without a wash photo (DetailTreatment applies the same
-  // gate). Blocking the button and saying why beats letting them press it and
-  // reading a failure.
-  const photoBlocked = step?.action === 'qc' && !hasPhoto
+  // gate). Rather than a dead button plus a camera somewhere else on the card,
+  // the main button *is* the photo step until there is one: it opens the
+  // camera, and once the upload lands it turns into Kirim ke QC. Sending stays
+  // a separate press, so a blurry shot can be caught before the ticket moves.
+  const needsPhoto = step?.action === 'qc' && !hasPhoto
+  const proof = useWashProofUpload({ treatmentId: treatment.id, onUploaded })
+  // Same idea for finishing: markSelesai refuses a ticket with no wash or QC
+  // worker. The pickers live on Detail Transaksi, not the card, so the button
+  // takes them there instead of sitting disabled.
+  const needsStaff = step?.action === 'done' && !hasRequiredStaff(treatment)
 
   return (
     <article className={`queue-card ${ACCENTS[treatment.status] || ''} ${overdue ? 'overdue' : ''}`}>
@@ -82,18 +90,27 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
       </div>
 
       <div className="queue-card-actions">
-        {step ? (
-          /* A blocked step gets the neutral treatment, not the green one — a
-             disabled green button still reads as "the action is here", when
-             the thing to do next is the camera in the strip below. */
+        {needsPhoto ? (
           <button
             type="button"
-            className={`worker-btn ${photoBlocked ? 'worker-btn-blocked' : `worker-btn-${step.tone}`}`}
-            onClick={() => onAdvance(treatment.id, step.action)}
-            disabled={busy || photoBlocked}
-            title={photoBlocked ? 'Unggah bukti foto cuci terlebih dahulu' : undefined}
+            className="worker-btn worker-btn-blue"
+            onClick={proof.open}
+            disabled={busy || proof.uploading}
           >
-            {photoBlocked ? 'Perlu Bukti Foto' : step.label}
+            {proof.uploading ? 'Mengunggah…' : '📷 Foto Bukti Cuci'}
+          </button>
+        ) : needsStaff ? (
+          <button type="button" className="worker-btn worker-btn-blue" onClick={open} disabled={busy}>
+            Pilih Petugas Cuci & QC
+          </button>
+        ) : step ? (
+          <button
+            type="button"
+            className={`worker-btn worker-btn-${step.tone}`}
+            onClick={() => onAdvance(treatment.id, step.action)}
+            disabled={busy}
+          >
+            {step.label}
           </button>
         ) : (
           <span className="worker-btn-static">Siap Diambil</span>
@@ -101,18 +118,11 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
         <button type="button" className="worker-btn worker-btn-ghost" onClick={open} aria-label="Lihat detail transaksi">
           i
         </button>
+        {/* Outside .queue-card-main on purpose: that area navigates on click,
+            and a stray navigation mid-capture would drop the photo. */}
+        {proof.capture}
       </div>
-
-      {/* Its own strip, outside .queue-card-main: WashProofButton wraps a file
-          input, and a stray navigation mid-capture would drop the photo. */}
-      <div className="queue-card-proof">
-        <span className="queue-card-proof-label">Bukti Foto Cuci</span>
-        <WashProofButton
-          treatmentId={treatment.id}
-          hasPhoto={hasPhoto}
-          onUploaded={onUploaded}
-        />
-      </div>
+      {proof.error && <p className="form-error queue-card-proof-error">{proof.error}</p>}
     </article>
   )
 }
