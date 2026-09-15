@@ -7,6 +7,7 @@ import {
   startProcessing,
   sendToQC,
   markSelesai,
+  hasRequiredStaff,
   recordPayment,
   assignWashStaff,
   assignQcStaff,
@@ -19,6 +20,8 @@ import { StaffPicker } from '../components/StaffPicker'
 import { MultiStaffPicker } from '../components/MultiStaffPicker'
 import { formatRupiah, formatDateTime } from '../lib/format'
 import { parseStaffNames } from '../lib/staffNames'
+import { useAuth } from '../context/useAuth'
+import { isStaff } from '../lib/roles'
 
 const STATUS_LABELS = {
   created: 'Dibuat',
@@ -33,6 +36,12 @@ const STATUS_LABELS = {
 export default function DetailTreatment() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { profile } = useAuth()
+  // The phone shell already names the screen in its top bar, so repeating it
+  // as an <h1> here just burns a line of a short screen. Workers get a back
+  // button in its place; the desk shell has no title of its own, so it keeps
+  // the heading.
+  const workerView = isStaff(profile)
   const [treatment, setTreatment] = useState(null)
   const [hasPhoto, setHasPhoto] = useState(false)
   const [photoUrl, setPhotoUrl] = useState(null)
@@ -131,12 +140,13 @@ export default function DetailTreatment() {
   }
 
   async function handleMarkSelesai() {
+    if (!hasRequiredStaff(treatment)) return
     setBusy(true)
     try {
       await markSelesai(id)
       load()
-    } catch {
-      setError('Gagal menyelesaikan transaksi')
+    } catch (err) {
+      setError(err.message || 'Gagal menyelesaikan transaksi')
     } finally {
       setBusy(false)
     }
@@ -180,10 +190,20 @@ export default function DetailTreatment() {
 
   const isFinal = treatment.status === 'voided' || treatment.status === 'closed'
   const isPaid = Boolean(treatment.payment)
+  const staffReady = hasRequiredStaff(treatment)
 
   return (
     <div className="detail-screen">
-      <h1>Detail Transaksi</h1>
+      {workerView ? (
+        <button type="button" className="worker-back-btn" onClick={() => navigate('/')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Kembali
+        </button>
+      ) : (
+        <h1>Detail Transaksi</h1>
+      )}
 
       <div className="detail-card">
         <div className="detail-card-header">
@@ -316,6 +336,10 @@ export default function DetailTreatment() {
           <p className="detail-hint">Pembayaran diperlukan sebelum transaksi bisa ditutup.</p>
         )}
 
+        {treatment.status === 'qc' && !staffReady && (
+          <p className="detail-hint">Isi petugas cuci dan petugas QC terlebih dahulu sebelum menandai selesai.</p>
+        )}
+
         {treatment.status === 'diproses' && !hasPhoto && (
           <p className="detail-hint">Unggah bukti foto cuci terlebih dahulu sebelum mengirim ke QC.</p>
         )}
@@ -345,7 +369,13 @@ export default function DetailTreatment() {
                 </button>
               )}
               {treatment.status === 'qc' && (
-                <button type="button" className="btn-primary" onClick={handleMarkSelesai} disabled={busy}>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleMarkSelesai}
+                  disabled={busy || !staffReady}
+                  title={staffReady ? undefined : 'Isi petugas cuci dan petugas QC terlebih dahulu'}
+                >
                   Tandai Selesai
                 </button>
               )}

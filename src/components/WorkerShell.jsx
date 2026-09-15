@@ -60,7 +60,7 @@ export function WorkerShell() {
     <div className="worker-ui worker-shell">
       <header className="worker-topbar">
         <div className="worker-topbar-left">
-          <span className="app-sidebar-brand-mark">ND</span>
+          <img src="/favicon.png" alt="Nineteen Details" className="app-sidebar-brand-mark" />
           <span className="worker-topbar-title">{screenTitle(pathname)}</span>
         </div>
         <div className="worker-topbar-right">

@@ -59,7 +59,7 @@ export function AppShell() {
       )}
       <aside className={`app-sidebar ${navOpen ? 'open' : ''}`}>
         <div className="app-sidebar-brand">
-          <span className="app-sidebar-brand-mark">ND</span>
+          <img src="/favicon.png" alt="Nineteen Details" className="app-sidebar-brand-mark" />
           <span className="app-sidebar-brand-name">Nineteen Details</span>
         </div>
         <nav className="app-sidebar-nav">

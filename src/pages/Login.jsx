@@ -71,7 +71,7 @@ export default function Login() {
   return (
     <div className="login-screen">
       <div className="login-card">
-        <div className="login-brand-mark">ND</div>
+        <img src="/favicon.png" alt="Nineteen Details" className="login-brand-mark" />
         <h1>Nineteen Details</h1>
         <p className="login-subtitle">Point of Sale</p>
 

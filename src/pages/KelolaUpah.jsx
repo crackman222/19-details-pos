@@ -82,10 +82,10 @@ function ServiceWageSection({ services, rates, loading, onChanged, onError }) {
       <div className="staf-section-header">
         <h2 className="transaksi-section-label">Upah per Layanan</h2>
       </div>
-      <p className="staf-section-note">
+      {/* <p className="staf-section-note">
         Nominal tetap yang didapat staf setiap kali mereka mengerjakan layanan ini pada satu kendaraan —
         bukan persentase, dan tidak tergantung harga jual layanan.
-      </p>
+      </p> */}
 
       {loading && <p className="riwayat-loading">Memuat...</p>}
       {!loading && services.length === 0 && <p className="riwayat-empty">Belum ada layanan</p>}
@@ -205,10 +205,10 @@ function DailyWageSection({ ratesVersion, onError }) {
           aria-label="Tanggal"
         />
       </div>
-      <p className="staf-section-note">
+      {/* <p className="staf-section-note">
         Dihitung otomatis dari transaksi pada tanggal ini, ditambah bonus dan dikurangi potongan yang dicatat
         manual.
-      </p>
+      </p> */}
 
       {loading && <p className="riwayat-loading">Memuat...</p>}
 

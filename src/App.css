@@ -325,13 +325,7 @@
   height: 36px;
   flex: none;
   border-radius: 8px;
-  background: var(--pos-blue);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 13px;
+  object-fit: cover;
 }
 
 .app-sidebar-brand-name {
@@ -621,13 +615,7 @@
   width: 48px;
   height: 48px;
   border-radius: 10px;
-  background: var(--pos-blue);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 16px;
+  object-fit: cover;
   margin: 0 auto 14px;
 }
 
@@ -1622,7 +1610,10 @@
   background: var(--pos-red-bg);
 }
 
-.wash-proof-btn input[type='file'] {
+/* The file input WashProofButton and the queue card's photo step both fall
+   back to when there is no in-page camera — clicked programmatically, never
+   seen. */
+.wash-proof-input {
   display: none;
 }
 
@@ -2654,7 +2645,11 @@
   cursor: pointer;
 }
 
+/* 40px both ways, not just min-height: the toggle is a 32px circle, and
+   stretching only its height turned it into an oval. */
 .worker-topbar .theme-toggle-btn {
+  width: 40px;
+  height: 40px;
   min-height: 40px;
 }
 
@@ -2765,20 +2760,6 @@
   cursor: not-allowed;
 }
 
-/* A step that exists but is gated (Kirim ke QC with no wash photo yet). Not
-   the green face at reduced opacity: that still reads as "press me". Dashed
-   and neutral instead, pointing at the camera strip below it. */
-.worker-btn-blocked {
-  background: var(--pos-gray-bg);
-  color: var(--pos-gray-text);
-  border: 2px dashed rgba(var(--pos-ink), 0.22);
-  font-size: 15px;
-}
-
-.worker-btn-blocked:disabled {
-  opacity: 1;
-}
-
 /* The square secondary — the mockup's "i". Outline, no lift. */
 .worker-btn-ghost {
   flex: none;
@@ -2815,6 +2796,42 @@
 }
 
 /* =========================================================================
+   Worker UI — back button
+   Stands in for the page <h1> on Detail Transaksi: the top bar already names
+   the screen, so the heading was said twice and getting back to the queue
+   meant the browser's own back gesture.
+   ========================================================================= */
+
+.worker-ui .worker-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin: -6px 0 10px -10px;
+  padding: 0 12px 0 6px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--pos-text-muted);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.worker-ui .worker-back-btn:active {
+  background: rgba(var(--pos-ink), 0.06);
+  color: var(--pos-text);
+}
+
+.worker-ui .worker-back-btn svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+/* =========================================================================
    Worker UI — filter chips
    Replaces the two rows of stat cards. Same numbers, but each one is now a
    filter, which is what the counts were really for.
@@ -2828,20 +2845,37 @@
      to a second row that pushes the queue below the fold. */
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  /* A hidden scrollbar left no way to tell the row scrolls at all — on a
+     phone the cut-off chip just looked clipped. Keep a slim always-visible
+     bar instead; it doubles as the drag handle in a desktop mobile preview,
+     where there is no touch fling. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--pos-ink), 0.25) transparent;
+  scroll-snap-type: x proximity;
   /* Bleed to the screen edges so the row reads as scrollable, while the first
      and last chip still line up with the cards below. */
   margin-left: -14px;
   margin-right: -14px;
-  padding: 2px 14px;
+  padding: 2px 14px 6px;
 }
 
 .worker-filters::-webkit-scrollbar {
-  display: none;
+  height: 4px;
+}
+
+.worker-filters::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.worker-filters::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(var(--pos-ink), 0.25);
 }
 
 .worker-chip {
   flex: none;
+  scroll-snap-align: start;
   height: 52px;
   padding: 0 18px;
   display: flex;
@@ -2998,22 +3032,9 @@
   padding: 0 16px 16px;
 }
 
-/* The wash-proof control lives in its own strip: WashProofButton wraps a file
-   input, and putting it inside .queue-card-main would mean a stray navigation
-   mid-capture drops the photo. */
-.queue-card-proof {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 11px 16px;
-  border-top: 1px solid rgba(var(--pos-ink), 0.07);
-  background: var(--pos-surface-2);
-}
-
-.queue-card-proof-label {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--pos-text-faint);
+/* Upload failure from the main button's photo step. */
+.queue-card-proof-error {
+  margin: -6px 16px 14px;
 }
 
 /* Dashed empty state, straight from the mockup. */
@@ -3099,6 +3120,22 @@
 /* The topbar's own controls are deliberately compact and exempt. */
 .worker-topbar button {
   min-height: 40px;
+}
+
+/* Circles have to grow on both axes. The min-height above only stretches
+   height, which squashes a fixed-width round button into an oval — so each
+   one gets a matching width at its touch size. */
+.worker-ui .ticket-line-qty button {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  flex: none;
+  font-size: 18px;
+}
+
+.worker-ui .photo-lightbox-close {
+  width: 44px;
+  height: 44px;
 }
 
 /* Antrian's own h1 + "Transaksi Baru" link are redundant here: the page title

@@ -156,7 +156,8 @@ export async function recordPayment(treatmentId, { amount, paymentMethod }) {
 // Work pipeline: created/paid -> diproses -> qc -> selesai -> closed.
 // Any staff can move a treatment through these three stages; the wash-proof
 // photo is required to enter 'qc' (enforced by the caller before invoking
-// sendToQC), not to reach 'selesai'.
+// sendToQC). Reaching 'selesai' requires at least one wash worker and a QC
+// worker on the ticket — markSelesai checks that itself, see below.
 export async function startProcessing(id) {
   const { error } = await supabase
     .from('treatments')
@@ -176,12 +177,31 @@ export async function sendToQC(id) {
 }
 
 export async function markSelesai(id) {
+  // Re-read rather than trust the caller's copy: someone may have cleared the
+  // assignment on another device since the screen loaded. The UI gates the
+  // button too, this is the guard for anything that reaches here anyway.
+  const { data: current, error: readError } = await supabase
+    .from('treatments')
+    .select('wash_staff, qc_staff')
+    .eq('id', id)
+    .single()
+  if (readError) throw readError
+  if (!hasRequiredStaff(current)) {
+    throw new Error('Petugas cuci dan petugas QC wajib diisi sebelum transaksi diselesaikan')
+  }
+
   const { error } = await supabase
     .from('treatments')
     .update({ status: 'selesai', updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
   await logStatusChange(id, 'selesai')
+}
+
+// A finished job has to say who did it: at least one wash worker and a QC
+// worker. Shared by markSelesai and the screens that gate its button.
+export function hasRequiredStaff(treatment) {
+  return parseStaffNames(treatment?.wash_staff).length > 0 && Boolean(treatment?.qc_staff?.trim())
 }
 
 // Worker assignment — who's actually washing/QC'ing the vehicle, separate
