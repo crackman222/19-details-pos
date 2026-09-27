@@ -166,7 +166,11 @@ function ServiceWageRow({ service, currentWage, onChanged, onError }) {
 }
 
 // What each staff member earned on one day: fixed-wage services they
-// washed, plus bonuses, minus deductions.
+// washed, plus bonuses, minus deductions. Nothing pushes this page an
+// update when a ticket is registered or a wash is assigned elsewhere — a
+// supervisor watching it while work happens on the floor needs it to catch
+// up on its own, not just on the date/rate changes that already trigger a
+// refetch.
 function DailyWageSection({ ratesVersion, onError }) {
   const [date, setDate] = useState(todayDateInput())
   const [summary, setSummary] = useState([])
@@ -177,7 +181,7 @@ function DailyWageSection({ ratesVersion, onError }) {
   // elsewhere on the page (which doesn't touch `date`) still gets a new
   // `reload` identity and re-triggers the effect below.
   const reload = useCallback(() => {
-    getDailyWageSummary(date)
+    return getDailyWageSummary(date)
       .then(setSummary)
       .catch(() => onError('Gagal memuat upah harian'))
       .finally(() => setLoading(false))
@@ -191,19 +195,47 @@ function DailyWageSection({ ratesVersion, onError }) {
     reload()
   }, [reload])
 
+  // Tickets get registered and wash staff get assigned from other screens
+  // (often another device entirely — the floor works off a phone, this page
+  // lives at the supervisor's desk). Catch back up whenever this tab becomes
+  // the active one again, same idle-detection convention as AuthContext, so
+  // the numbers are current the moment someone actually looks at them
+  // instead of only on the date they happened to load the page.
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (!document.hidden) reload()
+    }
+    window.addEventListener('focus', reload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('focus', reload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [reload])
+
   const totalNet = summary.reduce((sum, row) => sum + row.netWage, 0)
 
   return (
     <section className="staf-section">
       <div className="staf-section-header">
         <h2 className="transaksi-section-label">Upah Harian</h2>
-        <input
-          type="date"
-          value={date}
-          max={todayDateInput()}
-          onChange={(e) => setDate(e.target.value)}
-          aria-label="Tanggal"
-        />
+        <div className="upah-daily-controls">
+          <input
+            type="date"
+            value={date}
+            max={todayDateInput()}
+            onChange={(e) => setDate(e.target.value)}
+            aria-label="Tanggal"
+          />
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={reload}
+            title="Hitung ulang dari transaksi terbaru"
+          >
+            ⟳ Refresh
+          </button>
+        </div>
       </div>
       {/* <p className="staf-section-note">
         Dihitung otomatis dari transaksi pada tanggal ini, ditambah bonus dan dikurangi potongan yang dicatat

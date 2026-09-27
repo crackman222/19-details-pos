@@ -6,6 +6,7 @@ import { ShelfItemPicker } from '../components/ShelfItemPicker'
 import { formatRupiah } from '../lib/format'
 import { useAuth } from '../context/useAuth'
 import { isStaff } from '../lib/roles'
+import { describePlateNumber, plateNumberError } from '../lib/plateNumber'
 
 export default function TransaksiBaru() {
   const { profile } = useAuth()
@@ -119,6 +120,13 @@ export default function TransaksiBaru() {
   // ticket only asks for plate and brand once something vehicle-related is on
   // it — a Cuci Helm ticket never does.
   const needsVehicle = selectedItems.some((item) => item.requiresVehicle)
+  // Live read of the plate field against the real regional-code table (see
+  // lib/plateNumber.js) — this is what "scans" it: not a camera, a format +
+  // region check that catches a fabricated plate before the ticket saves.
+  const plateCheck = useMemo(
+    () => (needsVehicle ? describePlateNumber(plateNumber) : null),
+    [needsVehicle, plateNumber]
+  )
   // Staff type the discount as either a percentage of the bill or a straight
   // Rupiah amount. Percentages are resolved against the subtotal and rounded
   // to a whole Rupiah — the DB column is numeric but the app never displays or
@@ -143,9 +151,12 @@ export default function TransaksiBaru() {
       setError('Pilih minimal satu layanan atau barang')
       return
     }
-    if (needsVehicle && !plateNumber.trim()) {
-      setError('Nomor plat wajib diisi')
-      return
+    if (needsVehicle) {
+      const plateError = plateNumberError(plateNumber)
+      if (plateError) {
+        setError(plateError)
+        return
+      }
     }
     if (!customerName.trim()) {
       setError('Nama pelanggan wajib diisi')
@@ -204,10 +215,21 @@ export default function TransaksiBaru() {
                 Nomor Plat
                 <input
                   value={plateNumber}
-                  onChange={(e) => setPlateNumber(e.target.value)}
+                  onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
                   placeholder="Contoh: B 1234 XYZ"
+                  className={plateCheck?.empty === false ? (plateCheck.valid ? 'plate-input-valid' : 'plate-input-invalid') : ''}
                   required
                 />
+                {plateCheck?.valid && (
+                  <span className="plate-check plate-check-valid">✓ Wilayah {plateCheck.region}</span>
+                )}
+                {plateCheck && !plateCheck.valid && !plateCheck.empty && (
+                  <span className="plate-check plate-check-invalid">
+                    {plateCheck.reason === 'region'
+                      ? `Kode wilayah "${plateCheck.code}" tidak dikenali`
+                      : 'Format belum lengkap — contoh: B 1234 XYZ'}
+                  </span>
+                )}
               </label>
               <label>
                 Merek Kendaraan
