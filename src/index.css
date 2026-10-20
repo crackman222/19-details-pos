@@ -15,7 +15,7 @@
   --heading: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  /* Nineteen Details POS palette */
+  /* Kuorza POS palette */
   --pos-font: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --pos-blue: #2c6a9e;
   --pos-blue-dark: #1f4e73;
@@ -91,7 +91,7 @@
   }
 }
 
-/* Nineteen Details POS dark mode — toggled by AppShell, persisted to
+/* Kuorza POS dark mode — toggled by AppShell, persisted to
    localStorage, and applied via [data-theme] on <html> (set inline in
    index.html before paint to avoid a light-mode flash). Same layout as
    light mode, just the token values invert. */

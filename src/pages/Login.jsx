@@ -71,8 +71,8 @@ export default function Login() {
   return (
     <div className="login-screen">
       <div className="login-card">
-        <img src="/favicon.png" alt="Nineteen Details" className="login-brand-mark" />
-        <h1>Nineteen Details</h1>
+        <img src="/favicon.png" alt="Kuorza" className="login-brand-mark" />
+        <h1>Kuorza</h1>
         <p className="login-subtitle">Point of Sale</p>
 
         <form className="login-form" onSubmit={handleSubmit}>

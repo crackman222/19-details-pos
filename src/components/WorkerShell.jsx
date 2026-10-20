@@ -38,7 +38,7 @@ function screenTitle(pathname) {
   if (pathname.startsWith('/treatment/')) return 'Detail Transaksi'
   if (pathname.startsWith('/struk/')) return 'Struk'
   const tab = WORKER_NAV.find((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)))
-  return tab ? tab.title : 'Nineteen Details'
+  return tab ? tab.title : 'Kuorza'
 }
 
 export function WorkerShell() {
@@ -60,7 +60,7 @@ export function WorkerShell() {
     <div className="worker-ui worker-shell">
       <header className="worker-topbar">
         <div className="worker-topbar-left">
-          <img src="/favicon.png" alt="Nineteen Details" className="app-sidebar-brand-mark" />
+          <img src="/favicon.png" alt="Kuorza" className="app-sidebar-brand-mark" />
           <span className="worker-topbar-title">{screenTitle(pathname)}</span>
         </div>
         <div className="worker-topbar-right">

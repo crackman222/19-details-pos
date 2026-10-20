@@ -59,8 +59,8 @@ export function AppShell() {
       )}
       <aside className={`app-sidebar ${navOpen ? 'open' : ''}`}>
         <div className="app-sidebar-brand">
-          <img src="/favicon.png" alt="Nineteen Details" className="app-sidebar-brand-mark" />
-          <span className="app-sidebar-brand-name">Nineteen Details</span>
+          <img src="/favicon.png" alt="Kuorza" className="app-sidebar-brand-mark" />
+          <span className="app-sidebar-brand-name">Kuorza</span>
         </div>
         <nav className="app-sidebar-nav">
           {NAV_ITEMS.filter(canSee).map((item) => (
